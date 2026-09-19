@@ -1,4 +1,9 @@
 # Steerhouse
+
+[![CI](https://github.com/HoneyBearTech/Steerhouse/actions/workflows/ci.yml/badge.svg)](https://github.com/HoneyBearTech/Steerhouse/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/HoneyBearTech/Steerhouse/actions/workflows/codeql.yml/badge.svg)](https://github.com/HoneyBearTech/Steerhouse/actions/workflows/codeql.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/HoneyBearTech/Steerhouse/badge)](https://scorecard.dev/viewer/?uri=github.com/HoneyBearTech/Steerhouse)
+
 Self-hosted web UI for running Ansible playbooks against target systems, packaged in Docker.
 
 ## Triggering runs from CI
