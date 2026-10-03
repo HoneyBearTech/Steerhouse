@@ -9,6 +9,7 @@ const GLOBAL_PERMISSIONS = new Set([
   "workers:read",
   "galaxy:manage",
   "projects:manage",
+  "notifications:global",
 ]);
 const STORAGE_KEY = "steerhouse.activeProject";
 
