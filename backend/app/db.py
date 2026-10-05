@@ -28,6 +28,8 @@ _MIGRATION_LOCK_KEY = 0x7374_6565_7268_7365  # "steerhse"
 # Claims take it shared, starting a galaxy install takes it exclusive: an install starts only
 # when no run is running, and no run is claimed while an install waits or runs.
 GALAXY_GATE_KEY = 0x7374_6565_7267_616C  # "steergal"
+# Serialises playbook-check claims, so the cap on checks running at once holds.
+LINT_CLAIM_KEY = 0x7374_6565_726C_6E74  # "steerlnt"
 
 
 class Base(DeclarativeBase):
