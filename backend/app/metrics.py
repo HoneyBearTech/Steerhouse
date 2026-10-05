@@ -134,6 +134,20 @@ GIT_SYNC_DURATION = Histogram(
 )
 for _outcome in ("ok", "unchanged", "failed"):
     GIT_SYNCS.labels(_outcome)
+INVENTORY_REFRESHES = Counter(
+    "steerhouse_inventory_refreshes",
+    "Inventory refreshes (dynamic sources), by how they ended",
+    ["outcome"],
+    registry=REGISTRY,
+)
+INVENTORY_REFRESH_DURATION = Histogram(
+    "steerhouse_inventory_refresh_duration_seconds",
+    "Time one inventory refresh took, from start to snapshot",
+    buckets=(0.5, 1, 2.5, 5, 10, 30, 60, 120, 300, 900),
+    registry=REGISTRY,
+)
+for _outcome in ("success", "failed", "timed_out"):
+    INVENTORY_REFRESHES.labels(_outcome)
 SECRET_STORE_READS = Counter(
     "steerhouse_secret_store_reads",
     "Reads from the secret store, by outcome (ok or the error kind)",
@@ -218,6 +232,12 @@ def secret_store_read(outcome: str) -> None:
 
 def secret_store_up(up: bool) -> None:
     SECRET_STORE_UP.set(1 if up else 0)
+
+
+def inventory_refresh_finished(outcome: str, seconds: float | None) -> None:
+    INVENTORY_REFRESHES.labels(outcome[:20]).inc()
+    if seconds is not None and outcome == "success":
+        INVENTORY_REFRESH_DURATION.observe(seconds)
 
 
 def git_sync_finished(outcome: str, seconds: float) -> None:
