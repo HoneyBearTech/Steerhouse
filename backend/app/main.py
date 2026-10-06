@@ -184,7 +184,7 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
         await asyncio.gather(reaper, dispatcher, syncer, prober, *serving, return_exceptions=True)
 
 
-app = FastAPI(title="Steerhouse API", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="Steerhouse API", version=metrics.VERSION, lifespan=lifespan)
 
 
 @app.exception_handler(DataError)
