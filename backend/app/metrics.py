@@ -90,6 +90,15 @@ QUEUE_WAIT = Histogram(
     buckets=(0.5, 1, 2.5, 5, 10, 30, 60, 120, 300, 600, 1800, 3600),
     registry=REGISTRY,
 )
+REQUEUED = Counter(
+    "steerhouse_requeued",
+    "Claimed runs and inventory refreshes put back in the queue because the secret store was "
+    "down, by kind (run or refresh)",
+    ["kind"],
+    registry=REGISTRY,
+)
+for _kind in ("run", "refresh"):
+    REQUEUED.labels(_kind)
 AUDIT_EVENTS = Counter(
     "steerhouse_audit_events",
     "Audit events recorded, by action and outcome",
@@ -252,6 +261,10 @@ def run_finished(db: Session, project_id: int, status: str, started_at: datetime
             RUN_DURATION.labels(labels[0]).observe(max(duration, 0.0))
 
     after_commit(db, observe)
+
+
+def requeued(kind: str) -> None:
+    REQUEUED.labels(kind).inc()
 
 
 def run_claimed(wait_seconds: float) -> None:
