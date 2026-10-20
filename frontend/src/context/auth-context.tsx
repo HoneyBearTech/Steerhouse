@@ -98,8 +98,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const logout = React.useCallback(async () => {
-    await api.logout();
+    const { redirect } = await api.logout();
     setUser(null);
+    // Signed in through OIDC with provider logout turned on: go on and end the provider's session too.
+    if (redirect) window.location.assign(redirect);
   }, []);
 
   const refreshUser = React.useCallback(async () => {

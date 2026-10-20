@@ -101,6 +101,8 @@ in the README). The login page then shows **Sign in with …** buttons.
 - **Unlink SSO** on **Users** frees the account to link to a different identity.
 - The server can limit GitHub sign-in to members of some GitHub organizations or teams; anyone else sees
   "Your GitHub account isn't in an organization or team allowed here".
+- It can end your session at the provider too when you log out (`OIDC_PROVIDER_LOGOUT`); you then land on
+  the sign-in page again. That also signs you out of the provider's other apps.
 - It can give people project roles from their single sign-on groups (`OIDC_ROLE_MAP`). Those memberships
   show **via SSO** and behave like the GitHub ones below: they follow the groups at each SSO sign-in, a
   password sign-in removes them, and **Make manual** or changing the role turns one into an ordinary

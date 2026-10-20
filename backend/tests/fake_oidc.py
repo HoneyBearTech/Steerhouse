@@ -32,6 +32,8 @@ class FakeOidc:
         self.token_requests = 0
         # What discovery claims to support; None omits the field, like some providers do.
         self.advertised_algs: list[str] | None = ["RS256"]
+        # RP-initiated logout; None omits it, like providers without one (Google).
+        self.end_session_endpoint: str | None = f"{ISSUER}/logout"
 
     def metadata(self) -> dict:
         data = {
@@ -44,6 +46,8 @@ class FakeOidc:
         }
         if self.advertised_algs is None:
             del data["id_token_signing_alg_values_supported"]
+        if self.end_session_endpoint is not None:
+            data["end_session_endpoint"] = self.end_session_endpoint
         return data
 
     def authorize(

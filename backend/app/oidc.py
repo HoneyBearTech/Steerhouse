@@ -8,7 +8,7 @@ real reason only in the audit log.
 
 import secrets
 import time
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit
 
 import httpx
 from joserfc import jwt
@@ -184,6 +184,26 @@ def _verify_id_token(settings: Settings, metadata: dict, id_token: str, nonce: s
     ):
         raise SsoError("failed", "ID token has several audiences and a foreign azp")
     return claims
+
+
+def end_session_url(settings: Settings) -> str | None:
+    """Where to send the browser to end the provider's session too (RP-initiated logout), or
+    None when the provider has no end_session_endpoint or advertises one we won't follow: it
+    must use the issuer's scheme. The provider sends the user back to PUBLIC_URL/login, which
+    has to be registered with it as a post-logout redirect URI."""
+    endpoint = get_metadata(settings).get("end_session_endpoint")
+    if not isinstance(endpoint, str):
+        return None
+    parts, issuer = urlsplit(endpoint), urlsplit(settings.oidc_issuer)
+    if parts.scheme != issuer.scheme or not parts.netloc or parts.fragment:
+        return None
+    query = urlencode(
+        {
+            "client_id": settings.oidc_client_id,
+            "post_logout_redirect_uri": settings.public_url.rstrip("/") + "/login",
+        }
+    )
+    return f"{endpoint}{'&' if parts.query else '?'}{query}"
 
 
 def _token_groups(settings: Settings, claims: dict) -> list[str]:

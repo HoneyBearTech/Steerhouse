@@ -578,6 +578,14 @@ strings, or that the provider replaced with a pointer to look the groups up (Ent
 many groups), refuses the sign-in instead of reading as "no groups", so nobody loses or keeps access by
 accident. A missing claim means no groups.
 
+**Logging out at the provider.** With `OIDC_PROVIDER_LOGOUT=true`, **Log out** on a session that came from
+OIDC also sends the browser to the provider's `end_session_endpoint`, so the provider's own session ends too
+(and with it the user's sign-in to the provider's other apps, which is why it is off by default). Register
+`<PUBLIC_URL>/login` with the provider as a post-logout redirect URI (Keycloak: *Valid post logout redirect
+URIs* on the client). Steerhouse doesn't keep the ID token, so it sends no `id_token_hint`: Keycloak then asks
+"Do you want to log out?" before redirecting back. Password and GitHub sessions are never sent on, and a provider with no logout endpoint,
+or one that can't be reached, just means the usual local logout.
+
 **GitHub**
 
 1. Create an OAuth App (GitHub → Settings → Developer settings → OAuth Apps) whose callback URL is

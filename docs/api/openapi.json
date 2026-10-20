@@ -3659,6 +3659,30 @@
         "title": "LoginRequest",
         "type": "object"
       },
+      "LogoutOut": {
+        "properties": {
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "redirect": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Redirect"
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "title": "LogoutOut",
+        "type": "object"
+      },
       "MemberAdd": {
         "properties": {
           "role": {
@@ -8878,11 +8902,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": {
-                    "type": "boolean"
-                  },
-                  "title": "Response Logout Api Auth Logout Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/LogoutOut"
                 }
               }
             },

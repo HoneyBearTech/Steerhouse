@@ -1029,7 +1029,7 @@ export const api = {
     request<{ options: PasskeyOptionsJSON }>("/auth/login/mfa/passkey/options", { method: "POST" }),
   loginPasskey: (credential: PasskeyResponseJSON) =>
     request<User>("/auth/login/mfa/passkey", { method: "POST", body: JSON.stringify({ credential }) }),
-  logout: () => request<{ ok: boolean }>("/auth/logout", { method: "POST" }),
+  logout: () => request<{ ok: boolean; redirect?: string | null }>("/auth/logout", { method: "POST" }),
   me: () => request<User>("/auth/me"),
   changePassword: (currentPassword: string, newPassword: string) =>
     request<{ ok: boolean }>("/auth/change-password", {

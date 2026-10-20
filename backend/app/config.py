@@ -147,6 +147,9 @@ class Settings(BaseSettings):
     # listed in the ID token's OIDC_GROUPS_CLAIM: each OIDC sign-in makes the user's
     # OIDC-granted project memberships match it.
     oidc_role_map: dict[str, dict[str, str]] = {}
+    # Opt-in: logging out of Steerhouse also ends the user's session at the OIDC provider (its
+    # end_session_endpoint), which signs them out of the provider's other apps too.
+    oidc_provider_logout: bool = False
     oidc_groups_claim: str = "groups"
 
     # Optional native GitHub sign-in (an OAuth App; GitHub is not an OIDC provider). Enabled

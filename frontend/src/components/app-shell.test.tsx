@@ -1,5 +1,5 @@
 import { act, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { FakeWebSocket } from "@/test/fake-websocket";
 import { inventory, playbook, run, viewerUser } from "@/test/fixtures";
@@ -28,6 +28,33 @@ describe("header", () => {
     expect(await screen.findByText(/Signed in as/)).toHaveTextContent("Signed in as admin (global admin)");
     await user.click(screen.getByRole("menuitem", { name: "Account" }));
     expect(await screen.findByRole("heading", { level: 1, name: "Account" })).toBeInTheDocument();
+  });
+
+  describe("log out", () => {
+    afterEach(() => vi.unstubAllGlobals());
+
+    it("goes on to the provider's logout page when the server says so", async () => {
+      const assign = vi.fn();
+      vi.stubGlobal("location", { ...window.location, assign });
+      const { user, screen } = renderApp("/runs", {
+        routes: { ...ROUTES, "POST /auth/logout": { ok: true, redirect: "https://idp.test/logout?client_id=c" } },
+      });
+      await user.click(await screen.findByRole("button", { name: "admin" }));
+      await user.click(screen.getByRole("menuitem", { name: "Log out" }));
+      await vi.waitFor(() => expect(assign).toHaveBeenCalledWith("https://idp.test/logout?client_id=c"));
+    });
+
+    it("just signs out when there is nowhere else to go", async () => {
+      const assign = vi.fn();
+      vi.stubGlobal("location", { ...window.location, assign });
+      const { user, screen } = renderApp("/runs", {
+        routes: { ...ROUTES, "POST /auth/logout": { ok: true, redirect: null } },
+      });
+      await user.click(await screen.findByRole("button", { name: "admin" }));
+      await user.click(screen.getByRole("menuitem", { name: "Log out" }));
+      expect(await screen.findByRole("button", { name: /sign in/i })).toBeInTheDocument();
+      expect(assign).not.toHaveBeenCalled();
+    });
   });
 
   it("shows no Admin menu to someone without admin pages", async () => {

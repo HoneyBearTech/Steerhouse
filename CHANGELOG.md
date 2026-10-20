@@ -15,6 +15,9 @@ steps when upgrading; those are listed under "Upgrading" and in [docs/upgrading.
   audited); memberships set by hand always win, and a password sign-in or **Unlink SSO** removes the granted
   ones. A groups claim that isn't a list of strings, or that the provider replaced with a pointer (Entra's
   overage), refuses the sign-in.
+- `OIDC_PROVIDER_LOGOUT` (off by default): **Log out** on a session that came from OpenID Connect also ends
+  the user's session at the provider (RP-initiated logout via its `end_session_endpoint`; register
+  `<PUBLIC_URL>/login` as a post-logout redirect URI). `POST /api/auth/logout` now answers `{ok, redirect}`.
 - README: trusting a private CA for an OpenID Connect provider (`SSL_CERT_FILE`).
 
 ## [0.7.0] - 2026-10-20

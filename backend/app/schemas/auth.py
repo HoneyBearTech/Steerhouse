@@ -56,6 +56,12 @@ class PasskeyCredentialIn(BaseModel):
     _bounded = field_validator("credential")(_bounded_credential)
 
 
+class LogoutOut(BaseModel):
+    ok: bool
+    # Set when the browser should go on to the OIDC provider to end its session there too.
+    redirect: str | None = None
+
+
 class PasskeyOptionsOut(BaseModel):
     # PublicKeyCredential{Creation,Request}OptionsJSON for navigator.credentials.
     options: dict[str, Any]

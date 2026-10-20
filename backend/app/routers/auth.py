@@ -4,7 +4,7 @@ from datetime import UTC, datetime, timedelta
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
-from app import audit, passkeys, totp
+from app import audit, oidc, passkeys, totp
 from app.config import get_settings
 from app.crypto import hash_password, verify_password
 from app.db import get_db
@@ -22,6 +22,7 @@ from app.permissions import (
 from app.schemas.auth import (
     ChangePasswordRequest,
     LoginRequest,
+    LogoutOut,
     MfaChallenge,
     MfaLoginRequest,
     PasskeyAddedOut,
@@ -48,7 +49,7 @@ from app.security import (
     session_info,
     verify_mfa_token,
 )
-from app.sso_common import audit_membership_changes, drop_managed_memberships
+from app.sso_common import SsoError, audit_membership_changes, drop_managed_memberships
 
 router = APIRouter()
 
@@ -431,18 +432,41 @@ def _finish_mfa(db: Session, response: Response, user: User, ip: str, method: st
     return _to_out(db, user)
 
 
-@router.post("/logout")
+def _provider_logout_url(user: User, token: str | None) -> str | None:
+    """The provider's end-session URL for a user who signed in through OIDC, if the owner
+    turned that on. Never raises: a provider that can't be reached must not stop a logout."""
+    settings = get_settings()
+    if not (settings.oidc_enabled and settings.oidc_provider_logout):
+        return None
+    info = session_info(token or "")
+    if info is None or info.method != "sso" or user.sso_issuer != settings.oidc_issuer:
+        return None
+    try:
+        return oidc.end_session_url(settings)
+    except SsoError:
+        return None
+
+
+@router.post("/logout", response_model=LogoutOut)
 def logout(
     request: Request,
     response: Response,
     steerhouse_session: str | None = Cookie(default=None, alias=SESSION_COOKIE_NAME),
     db: Session = Depends(get_db),
-) -> dict[str, bool]:
+) -> LogoutOut:
     user = authenticate_token(db, steerhouse_session)
+    redirect = None
     if user is not None:
-        audit.record(db, "auth.logout", actor=user, ip=client_ip(request))
+        redirect = _provider_logout_url(user, steerhouse_session)
+        audit.record(
+            db,
+            "auth.logout",
+            actor=user,
+            ip=client_ip(request),
+            detail={"provider_logout": True} if redirect else None,
+        )
     response.delete_cookie(SESSION_COOKIE_NAME, path="/")
-    return {"ok": True}
+    return LogoutOut(ok=True, redirect=redirect)
 
 
 @router.get("/me", response_model=UserOut)
