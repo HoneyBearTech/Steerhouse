@@ -558,6 +558,12 @@ break-glass. Both can be enabled at once.
    The issuer must match the provider's `issuer` exactly. In production both URLs must be `https`.
 3. In **Users**, create each person (or open an existing one) and set their **email**.
 
+If the provider's certificate comes from a private CA (for example a self-hosted Keycloak), point the
+backend at a CA bundle with `SSL_CERT_FILE=/path/to/bundle.pem` (mount the file into the container).
+That file **replaces** the built-in list of trusted CAs for all of the backend's outgoing TLS
+(notifications, GitHub, the secret store), so it must hold the public CAs as well as yours, for example
+the system bundle with your CA appended. Without it, sign-in fails closed with a generic "failed" error.
+
 **GitHub**
 
 1. Create an OAuth App (GitHub → Settings → Developer settings → OAuth Apps) whose callback URL is
