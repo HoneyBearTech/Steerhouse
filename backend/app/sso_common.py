@@ -76,19 +76,28 @@ def verify_state(flow: str, cookie: str, state: str) -> dict:
 
 
 def resolve_user(
-    db: Session, settings: Settings, issuer: str, subject: str, emails: list[str]
+    db: Session,
+    settings: Settings,
+    issuer: str,
+    subject: str,
+    emails: list[str],
+    allowed_domains: list[str] | None = None,
 ) -> tuple[User, bool]:
     """(user, newly_linked). `emails` are addresses the provider has *verified*.
 
     Pre-provisioned only: match the bound (issuer, subject), else the one not-yet-linked
     user whose email is among `emails`. Never creates or re-links anyone, and a sign-in
-    that could be either of two users is refused rather than guessed at."""
+    that could be either of two users is refused rather than guessed at. `allowed_domains` is
+    one provider's own list: it narrows SSO_ALLOWED_EMAIL_DOMAINS, never widens it."""
     # An address Unicode compatibility normalisation changes (a KELVIN SIGN for "K", say) is
     # never compared: str.lower() folds some of those into ASCII, so it would match another
     # person's address.
     emails = [e for e in emails if unicodedata.normalize("NFKC", e) == e]
     domains = {d.lower().lstrip("@") for d in settings.sso_allowed_email_domains}
-    if domains:
+    if allowed_domains is not None:
+        own = {d.lower().lstrip("@") for d in allowed_domains}
+        domains = own & domains if domains else own
+    if domains or allowed_domains is not None:
         emails = [e for e in emails if e.rpartition("@")[2].lower() in domains]
     if not emails:
         raise SsoError("not_linked", "no verified email in an allowed domain")

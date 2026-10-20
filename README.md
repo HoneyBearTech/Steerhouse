@@ -613,6 +613,32 @@ break-glass. Both can be enabled at once.
    The issuer must match the provider's `issuer` exactly. In production both URLs must be `https`.
 3. In **Users**, create each person (or open an existing one) and set their **email**.
 
+**Several providers.** To offer more than one (Keycloak and Google, say), set `OIDC_PROVIDERS` to a JSON list instead
+of `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` and `OIDC_ROLE_MAP` (the two ways don't mix):
+
+```
+OIDC_PROVIDERS=[{"slug": "keycloak", "issuer": "https://sso.example.com/realms/ops", "client_id": "steerhouse",
+  "client_secret": "...", "button_label": "Keycloak", "role_map": {"ops": {"Default": "operator"}}},
+  {"slug": "google", "issuer": "https://accounts.google.com", "client_id": "...", "client_secret": "...",
+  "button_label": "Google", "allowed_email_domains": ["example.com"]}]
+```
+
+Each provider gets its own button on the login page and its own redirect URI,
+`<PUBLIC_URL>/api/auth/oidc/<slug>/callback`, to register at the provider. A slug is 1 to 32 lowercase letters,
+digits or `-` (not `github`, `login` or `callback`); issuers and slugs must be unique, at most 8. Besides `scopes`,
+`role_map`, `groups_claim` and `provider_logout` (the settings above, per provider), `allowed_email_domains` limits
+a provider to some email domains; it can only narrow `SSO_ALLOWED_EMAIL_DOMAINS`, never widen it. The provider
+with the slug `oidc` keeps the original single-provider URLs and cookie (`<PUBLIC_URL>/api/auth/oidc/callback`),
+so move your existing provider into the list with `"slug": "oidc"` and nothing needs re-registering. The client
+secrets are in this setting: put it in a secret file (`oidc_providers` in `/run/secrets`) rather than `.env`.
+
+A person's account links to **one** provider: the first SSO sign-in links it by a verified email, and after that
+only that provider signs them in (another one's `not_linked` error leaves the account alone); **Unlink SSO** on
+**Users** lets them link to a different one. Project memberships a provider's `role_map` grants are marked **via
+SSO** and audited as `oidc:<slug> group`. Mind what an email address proves: the first sign-in trusts each
+provider's `email_verified`, so only add providers whose verified emails you trust, and limit open ones (a social
+login, a Keycloak realm with self-registration) with `allowed_email_domains`.
+
 If the provider's certificate comes from a private CA (for example a self-hosted Keycloak), point the
 backend at a CA bundle with `SSL_CERT_FILE=/path/to/bundle.pem` (mount the file into the container).
 That file **replaces** the built-in list of trusted CAs for all of the backend's outgoing TLS

@@ -433,16 +433,17 @@ def _finish_mfa(db: Session, response: Response, user: User, ip: str, method: st
 
 
 def _provider_logout_url(user: User, token: str | None) -> str | None:
-    """The provider's end-session URL for a user who signed in through OIDC, if the owner
-    turned that on. Never raises: a provider that can't be reached must not stop a logout."""
+    """The end-session URL of the OIDC provider the user signed in through, if the owner turned
+    that on for it. Never raises: a provider that can't be reached must not stop a logout."""
     settings = get_settings()
-    if not (settings.oidc_enabled and settings.oidc_provider_logout):
-        return None
     info = session_info(token or "")
-    if info is None or info.method != "sso" or user.sso_issuer != settings.oidc_issuer:
+    if info is None or info.method != "sso":
+        return None
+    provider = next((p for p in settings.oidc_provider_list if p.issuer == user.sso_issuer), None)
+    if provider is None or not provider.provider_logout:
         return None
     try:
-        return oidc.end_session_url(settings)
+        return oidc.end_session_url(settings, provider)
     except SsoError:
         return None
 

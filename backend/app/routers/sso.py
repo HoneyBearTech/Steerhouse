@@ -1,6 +1,6 @@
 from collections.abc import Callable
 from dataclasses import dataclass
-from types import ModuleType
+from typing import Any
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
@@ -8,7 +8,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app import audit, github_login, oidc
-from app.config import Settings, get_settings
+from app.config import OIDC_LEGACY_SLUG, OidcProvider, Settings, get_settings
 from app.db import get_db
 from app.hardening import client_ip, sso_ip_throttle
 from app.routers.auth import _set_session_cookie
@@ -28,23 +28,54 @@ router = APIRouter()
 class Provider:
     """What the shared start/callback handlers need to know about one sign-in flow."""
 
-    module: ModuleType  # begin_login / complete_login / STATE_COOKIE_*
+    module: Any  # begin_login / complete_login / STATE_COOKIE_NAME / STATE_COOKIE_PATH
     method: str  # recorded as `detail.method` on auth.login
     enabled: Callable[[Settings], bool]
     issuer: Callable[[Settings], str]
     # Audit wording for memberships its group mapping changes.
     sync_actor: str = "(sso group sync)"
     sync_via: str = "sso group"
+    # Which of several OIDC providers (None for the original one and for GitHub): named in
+    # the audit log.
+    slug: str | None = None
+
+    @property
+    def tag(self) -> dict[str, str]:
+        return {"provider": self.slug} if self.slug else {}
 
 
-_OIDC = Provider(
-    oidc,
-    "sso",
-    lambda s: s.oidc_enabled,
-    lambda s: s.oidc_issuer,
-    sync_actor="(oidc group sync)",
-    sync_via="oidc group",
-)
+class _OidcFlow:
+    """One OIDC provider as the shared handlers see a flow: its cookie, and the two steps."""
+
+    def __init__(self, provider: OidcProvider) -> None:
+        self.provider = provider
+        self.STATE_COOKIE_NAME = oidc.cookie_name(provider)
+        self.STATE_COOKIE_PATH = oidc.cookie_path(provider)
+
+    def begin_login(self, settings: Settings) -> tuple[str, str]:
+        return oidc.begin_login(settings, self.provider)
+
+    def complete_login(self, db: Session, settings: Settings, **kwargs: str) -> Any:
+        return oidc.complete_login(db, settings, self.provider, **kwargs)
+
+
+def _oidc(slug: str) -> Provider:
+    """The OIDC provider with this slug, or the same 404 as for SSO that is switched off."""
+    config = get_settings().oidc_provider(slug)
+    if config is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "SSO is not enabled")
+    legacy = config.legacy
+    return Provider(
+        _OidcFlow(config),
+        "sso",
+        lambda s: s.oidc_enabled,
+        lambda _s: config.issuer,
+        sync_actor="(oidc group sync)" if legacy else f"(oidc:{config.slug} group sync)",
+        sync_via="oidc group" if legacy else f"oidc:{config.slug} group",
+        slug=None if legacy else config.slug,
+    )
+
+
 _GITHUB = Provider(
     github_login,
     "github",
@@ -74,8 +105,14 @@ def _failure(provider: Provider, code: str) -> RedirectResponse:
 def providers() -> dict:
     settings = get_settings()
     rp = settings.passkey_rp
+    configured = settings.oidc_provider_list
     return {
-        "oidc": {"enabled": settings.oidc_enabled, "label": settings.oidc_button_label},
+        # The first provider, as before there could be several (older pages use only this).
+        "oidc": {
+            "enabled": bool(configured),
+            "label": configured[0].button_label if configured else settings.oidc_button_label,
+        },
+        "oidc_providers": [{"slug": p.slug, "label": p.button_label} for p in configured],
         "github": {"enabled": settings.github_enabled, "label": settings.github_button_label},
         # Passkeys work only at this origin (PUBLIC_URL), the browser's address must match it.
         "passkeys": {
@@ -100,7 +137,7 @@ def _login(provider: Provider, request: Request, db: Session) -> RedirectRespons
             outcome="failure",
             actor_username="(sso login start)",
             ip=ip,
-            detail={"reason": exc.reason},
+            detail={"reason": exc.reason, **provider.tag},
         )
         return _failure(provider, exc.code)
     response = RedirectResponse(url, status.HTTP_302_FOUND)
@@ -152,7 +189,7 @@ def _callback(
             actor=exc.user,
             actor_username=None if exc.user else "(unknown sso identity)",
             ip=ip,
-            detail={"reason": exc.reason, "email": exc.email},
+            detail={"reason": exc.reason, "email": exc.email, **provider.tag},
         )
         return _failure(provider, exc.code)
 
@@ -170,12 +207,12 @@ def _callback(
             target_id=user.id,
             target_name=user.username,
             ip=ip,
-            detail={"issuer": provider.issuer(settings)},
+            detail={"issuer": provider.issuer(settings), **provider.tag},
         )
     audit_membership_changes(
         db, user, changes, actor_username=provider.sync_actor, via=provider.sync_via, ip=ip
     )
-    detail: dict = {"method": provider.method, **sign_in.notes}
+    detail: dict = {"method": provider.method, **provider.tag, **sign_in.notes}
     if kept:
         detail["kept_manual"] = kept
     audit.record(db, "auth.login", actor=user, ip=ip, detail=detail)
@@ -184,7 +221,7 @@ def _callback(
 
 @router.get("/oidc/login")
 def oidc_login(request: Request, db: Session = Depends(get_db)) -> RedirectResponse:
-    return _login(_OIDC, request, db)
+    return _login(_oidc(OIDC_LEGACY_SLUG), request, db)
 
 
 @router.get("/oidc/callback")
@@ -197,7 +234,41 @@ def oidc_callback(
     db: Session = Depends(get_db),
 ) -> RedirectResponse:
     return _callback(
-        _OIDC, request, db, code=code, state=state, error=error, state_cookie=state_cookie
+        _oidc(OIDC_LEGACY_SLUG),
+        request,
+        db,
+        code=code,
+        state=state,
+        error=error,
+        state_cookie=state_cookie,
+    )
+
+
+@router.get("/oidc/{slug}/login")
+def oidc_provider_login(
+    slug: str, request: Request, db: Session = Depends(get_db)
+) -> RedirectResponse:
+    return _login(_oidc(slug), request, db)
+
+
+@router.get("/oidc/{slug}/callback")
+def oidc_provider_callback(
+    slug: str,
+    request: Request,
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    provider = _oidc(slug)
+    return _callback(
+        provider,
+        request,
+        db,
+        code=code,
+        state=state,
+        error=error,
+        state_cookie=request.cookies.get(provider.module.STATE_COOKIE_NAME),
     )
 
 

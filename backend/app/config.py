@@ -6,7 +6,16 @@ from typing import Literal
 from urllib.parse import urlsplit
 
 from cryptography.fernet import Fernet
-from pydantic import AliasChoices, Field, field_validator, model_validator
+from pydantic import (
+    AliasChoices,
+    BaseModel,
+    ConfigDict,
+    Field,
+    PrivateAttr,
+    SecretStr,
+    field_validator,
+    model_validator,
+)
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import make_url
 
@@ -94,6 +103,90 @@ def _oidc_group(value: str) -> str:
     return group
 
 
+# OpenID Connect providers: OIDC_PROVIDERS is a JSON list of these. The provider with the slug
+# "oidc" keeps the original single-provider URLs and cookie names (so the single-provider
+# OIDC_* settings, which make exactly that provider, keep working unchanged).
+OIDC_LEGACY_SLUG = "oidc"
+MAX_OIDC_PROVIDERS = 8
+_OIDC_SLUG = re.compile(r"[a-z0-9][a-z0-9-]{0,31}")
+# "github" is the other sign-in; "login" and "callback" would look like the legacy routes.
+_OIDC_RESERVED_SLUGS = frozenset({"github", "login", "callback"})
+_EMAIL_DOMAIN = re.compile(r"[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+")
+
+
+class OidcProvider(BaseModel):
+    """One OpenID Connect provider (an entry of OIDC_PROVIDERS)."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, hide_input_in_errors=True)
+
+    slug: str
+    issuer: str
+    client_id: str = Field(min_length=1)
+    client_secret: SecretStr
+    scopes: str = "openid email profile"
+    button_label: str = Field("SSO", max_length=40)
+    # {"<group>": {"<project name>": "admin|operator|viewer"}}, from the ID token's groups claim.
+    role_map: dict[str, dict[str, str]] = {}
+    groups_claim: str = "groups"
+    # Log out of this provider too when someone logs out of Steerhouse (opt-in).
+    provider_logout: bool = False
+    # Narrows SSO_ALLOWED_EMAIL_DOMAINS for this provider (never widens it): only these
+    # domains' verified emails may sign in here. None: no extra limit.
+    allowed_email_domains: list[str] | None = None
+
+    @field_validator("slug")
+    @classmethod
+    def _slug(cls, v: str) -> str:
+        if not _OIDC_SLUG.fullmatch(v) or v in _OIDC_RESERVED_SLUGS:
+            raise ValueError(
+                "OIDC_PROVIDERS: a slug is 1 to 32 lowercase letters, digits or '-' (it names "
+                "the callback URL); github, login and callback are taken"
+            )
+        return v
+
+    @field_validator("issuer")
+    @classmethod
+    def _issuer(cls, v: str) -> str:
+        parts = urlsplit(v)
+        if parts.scheme not in ("https", "http") or not parts.hostname or parts.fragment:
+            raise ValueError("OIDC_PROVIDERS: an issuer is an https:// URL")
+        return v
+
+    @field_validator("client_secret")
+    @classmethod
+    def _secret(cls, v: SecretStr) -> SecretStr:
+        if not v.get_secret_value():
+            raise ValueError("OIDC_PROVIDERS: client_secret is empty")
+        return v
+
+    @field_validator("role_map")
+    @classmethod
+    def _role_map(cls, v: dict[str, dict[str, str]]) -> dict[str, dict[str, str]]:
+        return _check_role_map(v, "OIDC_PROVIDERS role_map", "group", _oidc_group, MAX_OIDC_GROUPS)
+
+    @field_validator("groups_claim")
+    @classmethod
+    def _groups_claim(cls, v: str) -> str:
+        claim = v.strip()
+        if not claim or len(claim) > 100 or not claim.isprintable():
+            raise ValueError("OIDC_PROVIDERS: groups_claim must be the name of a claim")
+        return claim
+
+    @field_validator("allowed_email_domains")
+    @classmethod
+    def _domains(cls, v: list[str] | None) -> list[str] | None:
+        if v is None:
+            return None
+        domains = sorted({d.strip().lower().lstrip("@") for d in v})
+        if not domains or len(domains) > 50 or not all(_EMAIL_DOMAIN.fullmatch(d) for d in domains):
+            raise ValueError("OIDC_PROVIDERS: allowed_email_domains is a list of domains")
+        return domains
+
+    @property
+    def legacy(self) -> bool:
+        return self.slug == OIDC_LEGACY_SLUG
+
+
 def is_placeholder(value: str) -> bool:
     """A value copied from .env.example without being changed ("change-me...")."""
     return value.strip().lower().startswith("change-me")
@@ -151,6 +244,10 @@ class Settings(BaseSettings):
     # end_session_endpoint), which signs them out of the provider's other apps too.
     oidc_provider_logout: bool = False
     oidc_groups_claim: str = "groups"
+    # Several providers at once (JSON list of OidcProvider); replaces the single-provider OIDC_*
+    # settings above, which stay as they are for one provider.
+    oidc_providers: list[OidcProvider] = []
+    _oidc_resolved: list[OidcProvider] = PrivateAttr(default_factory=list)
 
     # Optional native GitHub sign-in (an OAuth App; GitHub is not an OIDC provider). Enabled
     # only when the client id and secret are both set. The URLs are overridable for GitHub
@@ -543,8 +640,17 @@ class Settings(BaseSettings):
         return self
 
     @property
+    def oidc_provider_list(self) -> list[OidcProvider]:
+        """Every OpenID Connect provider: OIDC_PROVIDERS, or the one the single-provider OIDC_*
+        settings make (slug "oidc")."""
+        return list(self._oidc_resolved)
+
+    def oidc_provider(self, slug: str) -> OidcProvider | None:
+        return next((p for p in self._oidc_resolved if p.slug == slug), None)
+
+    @property
     def oidc_enabled(self) -> bool:
-        return bool(self.oidc_issuer and self.oidc_client_id and self.oidc_client_secret)
+        return bool(self._oidc_resolved)
 
     @property
     def github_enabled(self) -> bool:
@@ -552,27 +658,62 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _validate_oidc(self) -> "Settings":
-        configured = [self.oidc_issuer, self.oidc_client_id, self.oidc_client_secret]
-        if any(configured) and not all(configured):
+        single = [self.oidc_issuer, self.oidc_client_id, self.oidc_client_secret]
+        if any(single) and not all(single):
             raise ValueError(
                 "OIDC is partially configured: set OIDC_ISSUER, OIDC_CLIENT_ID and "
                 "OIDC_CLIENT_SECRET together (or none of them)."
             )
-        if not self.oidc_enabled:
+        providers: list[OidcProvider]
+        if self.oidc_providers:
+            if any(single) or self.oidc_role_map:
+                raise ValueError(
+                    "OIDC_PROVIDERS replaces OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET and "
+                    'OIDC_ROLE_MAP: move that provider into the list (with "slug": "oidc" to keep '
+                    "its callback URL), and drop those settings."
+                )
+            providers = list(self.oidc_providers)
+            if len(providers) > MAX_OIDC_PROVIDERS:
+                raise ValueError(f"OIDC_PROVIDERS lists more than {MAX_OIDC_PROVIDERS} providers")
+            if len({p.slug for p in providers}) != len(providers):
+                raise ValueError("OIDC_PROVIDERS lists the same slug twice")
+            if len({p.issuer.rstrip("/") for p in providers}) != len(providers):
+                raise ValueError(
+                    "OIDC_PROVIDERS lists the same issuer twice (an account links to one issuer)"
+                )
+        elif all(single):
+            providers = [
+                OidcProvider.model_construct(
+                    slug=OIDC_LEGACY_SLUG,
+                    issuer=self.oidc_issuer,
+                    client_id=self.oidc_client_id,
+                    client_secret=SecretStr(self.oidc_client_secret),
+                    scopes=self.oidc_scopes,
+                    button_label=self.oidc_button_label,
+                    role_map=self.oidc_role_map,
+                    groups_claim=self.oidc_groups_claim,
+                    provider_logout=self.oidc_provider_logout,
+                    allowed_email_domains=None,
+                )
+            ]
+        else:
             if self.oidc_role_map:
                 raise ValueError(
                     "OIDC_ROLE_MAP needs OIDC sign-in (OIDC_ISSUER, OIDC_CLIENT_ID and "
                     "OIDC_CLIENT_SECRET)."
                 )
+            self._oidc_resolved = []
             return self
         if not self.public_url.startswith(("http://", "https://")):
             raise ValueError("OIDC needs PUBLIC_URL (e.g. https://steerhouse.example.com).")
         if self.environment.lower() == "production" and not (
-            self.public_url.startswith("https://") and self.oidc_issuer.startswith("https://")
+            self.public_url.startswith("https://")
+            and all(p.issuer.startswith("https://") for p in providers)
         ):
             raise ValueError(
                 "ENVIRONMENT=production requires https for PUBLIC_URL and OIDC_ISSUER."
             )
+        self._oidc_resolved = providers
         return self
 
     @field_validator("github_allowed_orgs")

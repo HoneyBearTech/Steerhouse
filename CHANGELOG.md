@@ -18,6 +18,12 @@ steps when upgrading; those are listed under "Upgrading" and in [docs/upgrading.
 - `OIDC_PROVIDER_LOGOUT` (off by default): **Log out** on a session that came from OpenID Connect also ends
   the user's session at the provider (RP-initiated logout via its `end_session_endpoint`; register
   `<PUBLIC_URL>/login` as a post-logout redirect URI). `POST /api/auth/logout` now answers `{ok, redirect}`.
+- Several OpenID Connect providers: `OIDC_PROVIDERS` (a JSON list, replacing the single-provider `OIDC_*`
+  settings, which keep working for one provider) gives each provider a slug, its own button, callback URL
+  (`/api/auth/oidc/<slug>/callback`), state cookie, role map, groups claim, provider logout and an optional
+  `allowed_email_domains` that narrows `SSO_ALLOWED_EMAIL_DOMAINS`. An account still links to one provider.
+  The provider with the slug `oidc` keeps the original URLs and cookie. `GET /api/auth/providers` also lists
+  `oidc_providers`; the audit log names the provider (`detail.provider`).
 - Secret store login with a JWT: `SECRETS_STORE_AUTH=jwt` or `kubernetes` with `SECRETS_STORE_ROLE` and a
   JWT file (`SECRETS_STORE_JWT_FILE`, by default the pod's service account token for `kubernetes`;
   `SECRETS_STORE_JWT_MOUNT` for a non-default mount). The file is read at every login, and Steerhouse logs in

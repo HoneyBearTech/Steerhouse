@@ -56,4 +56,10 @@ class UserAdminOut(BaseModel):
     def sso_provider(self) -> str | None:
         if self.sso_issuer is None:
             return None
-        return "GitHub" if self.sso_issuer == get_settings().github_url else "SSO"
+        settings = get_settings()
+        if self.sso_issuer == settings.github_url:
+            return "GitHub"
+        # With several providers, say which one; with one, "SSO" says it all.
+        providers = settings.oidc_provider_list
+        match = next((p for p in providers if p.issuer == self.sso_issuer), None)
+        return match.button_label if match and len(providers) > 1 else "SSO"

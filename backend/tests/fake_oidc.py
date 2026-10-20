@@ -26,21 +26,24 @@ def b64url(data: bytes) -> str:
 
 
 class FakeOidc:
-    def __init__(self) -> None:
+    def __init__(
+        self, issuer: str = ISSUER, client_id: str = CLIENT_ID, client_secret: str = CLIENT_SECRET
+    ) -> None:
+        self.issuer, self.client_id, self.client_secret = issuer, client_id, client_secret
         self.key = RSAKey.generate_key(2048, parameters={"kid": "k1", "use": "sig"})
         self.codes: dict[str, dict] = {}
         self.token_requests = 0
         # What discovery claims to support; None omits the field, like some providers do.
         self.advertised_algs: list[str] | None = ["RS256"]
         # RP-initiated logout; None omits it, like providers without one (Google).
-        self.end_session_endpoint: str | None = f"{ISSUER}/logout"
+        self.end_session_endpoint: str | None = f"{self.issuer}/logout"
 
     def metadata(self) -> dict:
         data = {
-            "issuer": ISSUER,
-            "authorization_endpoint": f"{ISSUER}/authorize",
-            "token_endpoint": f"{ISSUER}/token",
-            "jwks_uri": f"{ISSUER}/jwks",
+            "issuer": self.issuer,
+            "authorization_endpoint": f"{self.issuer}/authorize",
+            "token_endpoint": f"{self.issuer}/token",
+            "jwks_uri": f"{self.issuer}/jwks",
             "id_token_signing_alg_values_supported": self.advertised_algs,
             "token_endpoint_auth_methods_supported": ["client_secret_basic"],
         }
@@ -64,7 +67,7 @@ class FakeOidc:
         """Plays the user-approves step: reads the app's authorization request and returns
         the code the provider would redirect back with."""
         query = {k: v[0] for k, v in parse_qs(urlparse(location).query).items()}
-        assert query["response_type"] == "code" and query["client_id"] == CLIENT_ID
+        assert query["response_type"] == "code" and query["client_id"] == self.client_id
         assert query["code_challenge_method"] == "S256"
         code = secrets.token_urlsafe(16)
         self.codes[code] = {
@@ -86,8 +89,8 @@ class FakeOidc:
     def _claims(self, entry: dict) -> dict:
         now = int(time.time())
         claims = {
-            "iss": ISSUER,
-            "aud": CLIENT_ID,
+            "iss": self.issuer,
+            "aud": self.client_id,
             "sub": entry["sub"],
             "iat": now,
             "exp": now + 300,
@@ -112,7 +115,9 @@ class FakeOidc:
 
     def _token(self, request: httpx.Request) -> httpx.Response:
         self.token_requests += 1
-        expected = "Basic " + base64.b64encode(f"{CLIENT_ID}:{CLIENT_SECRET}".encode()).decode()
+        expected = (
+            "Basic " + base64.b64encode(f"{self.client_id}:{self.client_secret}".encode()).decode()
+        )
         if request.headers.get("authorization") != expected:
             return httpx.Response(401, json={"error": "invalid_client"})
         form = {k: v[0] for k, v in parse_qs(request.content.decode()).items()}

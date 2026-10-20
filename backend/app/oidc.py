@@ -16,7 +16,7 @@ from joserfc.errors import JoseError
 from joserfc.jwk import KeySet
 from sqlalchemy.orm import Session
 
-from app.config import MAX_OIDC_TOKEN_GROUPS, Settings
+from app.config import MAX_OIDC_TOKEN_GROUPS, OidcProvider, Settings
 from app.sso_common import (
     SsoError,
     SsoSignIn,
@@ -29,7 +29,9 @@ from app.sso_common import (
 )
 
 FLOW = "oidc"
-SOURCE = "oidc"  # project_members.granted_by of the memberships OIDC_ROLE_MAP manages
+SOURCE = "oidc"  # project_members.granted_by of the memberships an OIDC role map manages
+# The provider with the slug "oidc" (the single-provider OIDC_* settings make it) keeps the
+# original names; any other provider gets its slug in its callback URL, cookie name and path.
 STATE_COOKIE_NAME = "steerhouse_oidc"
 STATE_COOKIE_PATH = "/api/auth/oidc"
 CALLBACK_PATH = "/api/auth/oidc/callback"
@@ -51,8 +53,26 @@ def clear_caches() -> None:
     _jwks_cache.clear()
 
 
-def redirect_uri(settings: Settings) -> str:
-    return f"{settings.public_url}{CALLBACK_PATH}"
+def callback_path(provider: OidcProvider) -> str:
+    return CALLBACK_PATH if provider.legacy else f"/api/auth/oidc/{provider.slug}/callback"
+
+
+def cookie_name(provider: OidcProvider) -> str:
+    return STATE_COOKIE_NAME if provider.legacy else f"{STATE_COOKIE_NAME}_{provider.slug}"
+
+
+def cookie_path(provider: OidcProvider) -> str:
+    return STATE_COOKIE_PATH if provider.legacy else f"{STATE_COOKIE_PATH}/{provider.slug}"
+
+
+def flow(provider: OidcProvider) -> str:
+    """The state cookie's signing salt: one per provider, so a cookie from one provider is
+    useless at another's callback."""
+    return FLOW if provider.legacy else f"{FLOW}-{provider.slug}"
+
+
+def redirect_uri(settings: Settings, provider: OidcProvider) -> str:
+    return f"{settings.public_url}{callback_path(provider)}"
 
 
 def _get_json(url: str) -> dict:
@@ -68,18 +88,18 @@ def _get_json(url: str) -> dict:
     return data
 
 
-def get_metadata(settings: Settings) -> dict:
-    cached = _metadata_cache.get(settings.oidc_issuer)
+def get_metadata(provider: OidcProvider) -> dict:
+    cached = _metadata_cache.get(provider.issuer)
     if cached and time.monotonic() - cached[0] < _METADATA_TTL_SECONDS:
         return cached[1]
-    metadata = _get_json(settings.oidc_issuer.rstrip("/") + "/.well-known/openid-configuration")
+    metadata = _get_json(provider.issuer.rstrip("/") + "/.well-known/openid-configuration")
     # Must match exactly what we were configured with (mix-up defence).
-    if metadata.get("issuer") != settings.oidc_issuer:
-        raise SsoError("failed", "provider metadata issuer does not match OIDC_ISSUER")
+    if metadata.get("issuer") != provider.issuer:
+        raise SsoError("failed", "provider metadata issuer does not match the configured issuer")
     for field in ("authorization_endpoint", "token_endpoint", "jwks_uri"):
         if not isinstance(metadata.get(field), str):
             raise SsoError("failed", f"provider metadata lacks {field}")
-    _metadata_cache[settings.oidc_issuer] = (time.monotonic(), metadata)
+    _metadata_cache[provider.issuer] = (time.monotonic(), metadata)
     return metadata
 
 
@@ -96,18 +116,18 @@ def _get_keyset(metadata: dict, *, refresh: bool = False) -> KeySet:
     return keyset
 
 
-def begin_login(settings: Settings) -> tuple[str, str]:
+def begin_login(settings: Settings, provider: OidcProvider) -> tuple[str, str]:
     """Returns (provider authorization URL, signed state-cookie value)."""
-    metadata = get_metadata(settings)
+    metadata = get_metadata(provider)
     state = secrets.token_urlsafe(32)
     nonce = secrets.token_urlsafe(32)
     verifier = secrets.token_urlsafe(64)
     query = urlencode(
         {
             "response_type": "code",
-            "client_id": settings.oidc_client_id,
-            "redirect_uri": redirect_uri(settings),
-            "scope": settings.oidc_scopes,
+            "client_id": provider.client_id,
+            "redirect_uri": redirect_uri(settings, provider),
+            "scope": provider.scopes,
             "state": state,
             "nonce": nonce,
             "code_challenge": pkce_challenge(verifier),
@@ -115,23 +135,26 @@ def begin_login(settings: Settings) -> tuple[str, str]:
         }
     )
     separator = "&" if "?" in metadata["authorization_endpoint"] else "?"
-    cookie = sign_state(FLOW, {"s": state, "n": nonce, "v": verifier})
+    cookie = sign_state(flow(provider), {"s": state, "n": nonce, "v": verifier, "p": provider.slug})
     return f"{metadata['authorization_endpoint']}{separator}{query}", cookie
 
 
-def _exchange_code(settings: Settings, metadata: dict, code: str, verifier: str) -> str:
+def _exchange_code(
+    settings: Settings, provider: OidcProvider, metadata: dict, code: str, verifier: str
+) -> str:
     form = {
         "grant_type": "authorization_code",
         "code": code,
-        "redirect_uri": redirect_uri(settings),
+        "redirect_uri": redirect_uri(settings, provider),
         "code_verifier": verifier,
     }
     methods = metadata.get("token_endpoint_auth_methods_supported") or ["client_secret_basic"]
     auth: tuple[str, str] | None = None
+    secret = provider.client_secret.get_secret_value()
     if "client_secret_basic" in methods:
-        auth = (settings.oidc_client_id, settings.oidc_client_secret)
+        auth = (provider.client_id, secret)
     else:
-        form.update(client_id=settings.oidc_client_id, client_secret=settings.oidc_client_secret)
+        form.update(client_id=provider.client_id, client_secret=secret)
     try:
         with http_client() as client:
             response = client.post(metadata["token_endpoint"], data=form, auth=auth)
@@ -144,7 +167,7 @@ def _exchange_code(settings: Settings, metadata: dict, code: str, verifier: str)
     return id_token
 
 
-def _verify_id_token(settings: Settings, metadata: dict, id_token: str, nonce: str) -> dict:
+def _verify_id_token(provider: OidcProvider, metadata: dict, id_token: str, nonce: str) -> dict:
     algorithms = ALLOWED_ALGORITHMS
     advertised = metadata.get("id_token_signing_alg_values_supported")
     if isinstance(advertised, list):
@@ -165,8 +188,8 @@ def _verify_id_token(settings: Settings, metadata: dict, id_token: str, nonce: s
         raise SsoError("failed", "ID token could not be verified")
     registry = jwt.JWTClaimsRegistry(
         leeway=_CLOCK_LEEWAY_SECONDS,
-        iss={"essential": True, "value": settings.oidc_issuer},
-        aud={"essential": True, "value": settings.oidc_client_id},
+        iss={"essential": True, "value": provider.issuer},
+        aud={"essential": True, "value": provider.client_id},
         exp={"essential": True},
         sub={"essential": True},
         nonce={"essential": True, "value": nonce},
@@ -177,42 +200,38 @@ def _verify_id_token(settings: Settings, metadata: dict, id_token: str, nonce: s
         raise SsoError("failed", f"ID token claims invalid: {type(exc).__name__}") from exc
     claims = token.claims
     audience = claims.get("aud")
-    if (
-        isinstance(audience, list)
-        and len(audience) > 1
-        and claims.get("azp") != settings.oidc_client_id
-    ):
+    if isinstance(audience, list) and len(audience) > 1 and claims.get("azp") != provider.client_id:
         raise SsoError("failed", "ID token has several audiences and a foreign azp")
     return claims
 
 
-def end_session_url(settings: Settings) -> str | None:
+def end_session_url(settings: Settings, provider: OidcProvider) -> str | None:
     """Where to send the browser to end the provider's session too (RP-initiated logout), or
     None when the provider has no end_session_endpoint or advertises one we won't follow: it
     must use the issuer's scheme. The provider sends the user back to PUBLIC_URL/login, which
     has to be registered with it as a post-logout redirect URI."""
-    endpoint = get_metadata(settings).get("end_session_endpoint")
+    endpoint = get_metadata(provider).get("end_session_endpoint")
     if not isinstance(endpoint, str):
         return None
-    parts, issuer = urlsplit(endpoint), urlsplit(settings.oidc_issuer)
+    parts, issuer = urlsplit(endpoint), urlsplit(provider.issuer)
     if parts.scheme != issuer.scheme or not parts.netloc or parts.fragment:
         return None
     query = urlencode(
         {
-            "client_id": settings.oidc_client_id,
+            "client_id": provider.client_id,
             "post_logout_redirect_uri": settings.public_url.rstrip("/") + "/login",
         }
     )
     return f"{endpoint}{'&' if parts.query else '?'}{query}"
 
 
-def _token_groups(settings: Settings, claims: dict) -> list[str]:
+def _token_groups(provider: OidcProvider, claims: dict) -> list[str]:
     """The groups the ID token lists in OIDC_GROUPS_CLAIM. A missing claim means no groups
     (Keycloak, for one, leaves it out for a user without any). A claim the provider replaced
     with a pointer (Entra's "overage" for users in too many groups) or that isn't a list of
     strings can't be read as "no groups": sign-in is refused rather than quietly removing
     access."""
-    name = settings.oidc_groups_claim
+    name = provider.groups_claim
     pointers = claims.get("_claim_names")
     if isinstance(pointers, dict) and name in pointers:
         raise SsoError("failed", f"ID token points elsewhere for its {name} claim (overage)")
@@ -229,28 +248,37 @@ def _token_groups(settings: Settings, claims: dict) -> list[str]:
 
 
 def complete_login(
-    db: Session, settings: Settings, *, cookie: str, code: str, state: str
+    db: Session, settings: Settings, provider: OidcProvider, *, cookie: str, code: str, state: str
 ) -> SsoSignIn:
-    data = verify_state(FLOW, cookie, state)
+    data = verify_state(flow(provider), cookie, state)
     try:
         nonce, verifier = data["n"], data["v"]
     except KeyError as exc:
         raise SsoError("failed", "state cookie missing, invalid or expired") from exc
+    # Signed for this provider (a cookie made before the slug was added has none: the legacy
+    # provider's), so it cannot be played at another provider's callback.
+    if data.get("p", "oidc") != provider.slug:
+        raise SsoError("failed", "state cookie belongs to another provider")
 
-    metadata = get_metadata(settings)
+    metadata = get_metadata(provider)
     claims = _verify_id_token(
-        settings, metadata, _exchange_code(settings, metadata, code, verifier), nonce
+        provider, metadata, _exchange_code(settings, provider, metadata, code, verifier), nonce
     )
     email = claims.get("email")
     if not isinstance(email, str) or "@" not in email:
         raise SsoError("failed", "ID token has no email claim")
     if claims.get("email_verified") is not True:
         raise SsoError("not_linked", "provider did not verify the email", email=email)
-    groups = _token_groups(settings, claims) if settings.oidc_role_map else []
+    groups = _token_groups(provider, claims) if provider.role_map else []
     user, newly_linked = resolve_user(
-        db, settings, settings.oidc_issuer, str(claims["sub"]), [email.strip()]
+        db,
+        settings,
+        provider.issuer,
+        str(claims["sub"]),
+        [email.strip()],
+        allowed_domains=provider.allowed_email_domains,
     )
     # Always returned, empty without a map: dropping the map removes what it granted.
-    grants, unknown = desired_memberships(db, settings.oidc_role_map, groups)
+    grants, unknown = desired_memberships(db, provider.role_map, groups)
     notes = {"unknown_projects": unknown} if unknown else {}
     return SsoSignIn(user, newly_linked, source=SOURCE, grants=grants, notes=notes)

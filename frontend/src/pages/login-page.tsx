@@ -10,7 +10,7 @@ import {
   api,
   ApiError,
   GITHUB_LOGIN_URL,
-  SSO_LOGIN_URL,
+  ssoLoginUrl,
   type AuthProviders,
   type MfaMethod,
 } from "@/lib/api";
@@ -148,6 +148,8 @@ export function LoginPage() {
   const [secondFactor, setSecondFactor] = React.useState<MfaMethod[] | null>(null);
   const needsSecondFactor = secondFactor !== null;
   const [providers, setProviders] = React.useState<AuthProviders | null>(null);
+  const oidcProviders =
+    providers?.oidc_providers ?? (providers?.oidc.enabled ? [{ slug: "oidc", label: providers.oidc.label }] : []);
   const [searchParams] = useSearchParams();
   const ssoError = searchParams.get("sso_error");
 
@@ -228,19 +230,24 @@ export function LoginPage() {
               </Button>
             </form>
           )}
-          {!needsSecondFactor && (providers?.oidc.enabled || providers?.github.enabled) && (
+          {!needsSecondFactor && (oidcProviders.length > 0 || providers?.github.enabled) && (
             <div className="mt-4 flex flex-col gap-3">
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
                 <span className="h-px flex-1 bg-border" />
                 or
                 <span className="h-px flex-1 bg-border" />
               </div>
-              {providers.oidc.enabled && (
-                <Button type="button" variant="outline" onClick={() => window.location.assign(SSO_LOGIN_URL)}>
-                  Sign in with {providers.oidc.label}
+              {oidcProviders.map((provider) => (
+                <Button
+                  key={provider.slug}
+                  type="button"
+                  variant="outline"
+                  onClick={() => window.location.assign(ssoLoginUrl(provider.slug))}
+                >
+                  Sign in with {provider.label}
                 </Button>
-              )}
-              {providers.github.enabled && (
+              ))}
+              {providers?.github.enabled && (
                 <Button
                   type="button"
                   variant="outline"

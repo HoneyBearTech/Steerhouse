@@ -126,6 +126,8 @@ PUBLIC = {
     ("/api/auth/providers", "GET"),
     ("/api/auth/oidc/login", "GET"),
     ("/api/auth/oidc/callback", "GET"),
+    ("/api/auth/oidc/{slug}/login", "GET"),
+    ("/api/auth/oidc/{slug}/callback", "GET"),
     ("/api/auth/github/login", "GET"),
     ("/api/auth/github/callback", "GET"),
 }

@@ -1,5 +1,5 @@
 import { within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { reply } from "@/test/fake-api";
 import { adminUser, passkey, playbook, run, viewerUser } from "@/test/fixtures";
@@ -69,6 +69,48 @@ describe("sign-in", () => {
     expect(await screen.findByRole("button", { name: "Sign in with Keycloak" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Sign in with GitHub" })).toBeInTheDocument();
     expect(screen.getByText(/No Steerhouse account is linked/)).toBeInTheDocument();
+  });
+
+  it("offers one button per OpenID Connect provider, each to its own login URL", async () => {
+    const assign = vi.fn();
+    vi.stubGlobal("location", { ...window.location, assign });
+    try {
+      const { user, screen } = renderApp("/login", {
+        user: null,
+        routes: {
+          "GET /auth/providers": {
+            oidc: { enabled: true, label: "Keycloak" },
+            oidc_providers: [
+              { slug: "keycloak", label: "Keycloak" },
+              { slug: "google", label: "Google" },
+            ],
+            github: { enabled: false, label: "GitHub" },
+          },
+        },
+      });
+      await user.click(await screen.findByRole("button", { name: "Sign in with Google" }));
+      expect(assign).toHaveBeenCalledWith(expect.stringMatching(/\/auth\/oidc\/google\/login$/));
+      await user.click(screen.getByRole("button", { name: "Sign in with Keycloak" }));
+      expect(assign).toHaveBeenLastCalledWith(expect.stringMatching(/\/auth\/oidc\/keycloak\/login$/));
+      expect(screen.queryByRole("button", { name: "Sign in with GitHub" })).not.toBeInTheDocument();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("uses the provider called oidc for a server that only sends the single provider", async () => {
+    const assign = vi.fn();
+    vi.stubGlobal("location", { ...window.location, assign });
+    try {
+      const { user, screen } = renderApp("/login", {
+        user: null,
+        routes: { "GET /auth/providers": { oidc: { enabled: true, label: "SSO" }, github: { enabled: false } } },
+      });
+      await user.click(await screen.findByRole("button", { name: "Sign in with SSO" }));
+      expect(assign).toHaveBeenCalledWith(expect.stringMatching(/\/auth\/oidc\/oidc\/login$/));
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("explains a GitHub sign-in refused by the org or team allow-list", async () => {

@@ -1,6 +1,7 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api";
 
 export const SSO_LOGIN_URL = `${API_BASE_URL}/auth/oidc/login`;
+export const ssoLoginUrl = (slug: string) => `${API_BASE_URL}/auth/oidc/${encodeURIComponent(slug)}/login`;
 export const GITHUB_LOGIN_URL = `${API_BASE_URL}/auth/github/login`;
 
 export class ApiError extends Error {
@@ -170,7 +171,9 @@ export interface AdminUser {
 }
 
 export interface AuthProviders {
+  // The first OpenID Connect provider (older servers have only this); `oidc_providers` lists all.
   oidc: { enabled: boolean; label: string };
+  oidc_providers?: { slug: string; label: string }[];
   github: { enabled: boolean; label: string };
   // Passkeys work only at `origin` (the server's PUBLIC_URL).
   passkeys?: { enabled: boolean; origin: string | null };

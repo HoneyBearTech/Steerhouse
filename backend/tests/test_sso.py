@@ -89,6 +89,7 @@ def _audit(admin: TestClient, action: str) -> list[dict]:
 def test_sso_is_off_by_default(client: TestClient) -> None:
     assert client.get("/api/auth/providers").json() == {
         "oidc": {"enabled": False, "label": "SSO"},
+        "oidc_providers": [],
         "github": {"enabled": False, "label": "GitHub"},
         "passkeys": {"enabled": False, "origin": None},  # http://testserver isn't localhost
     }
@@ -100,6 +101,7 @@ def test_providers_reports_the_button_label(sso) -> None:
     browser = TestClient(app)
     assert browser.get("/api/auth/providers").json() == {
         "oidc": {"enabled": True, "label": "Acme SSO"},
+        "oidc_providers": [{"slug": "oidc", "label": "Acme SSO"}],
         "github": {"enabled": False, "label": "GitHub"},
         "passkeys": {"enabled": False, "origin": None},  # http://testserver isn't localhost
     }
