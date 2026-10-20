@@ -114,6 +114,19 @@ describe("projects", () => {
     expect(screen.queryByText("alice")).not.toBeInTheDocument();
   });
 
+  it("marks memberships an SSO group grants as via SSO", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const managed = { user_id: 3, username: "carol", is_active: true, role: "operator", granted_by: "oidc" };
+    const { user, screen } = renderApp("/projects", {
+      routes: { "GET /projects": [summary()], "GET /projects/:id/members": [...MEMBERS, managed] },
+    });
+    await user.click(await screen.findByRole("button", { name: "Members" }));
+    expect(await screen.findByText("via SSO")).toBeInTheDocument();
+    expect(screen.queryByText("via GitHub")).not.toBeInTheDocument();
+    await user.click(screen.getAllByRole("button", { name: "Remove" })[2]!);
+    expect(confirm.mock.calls[0]?.[0]).toMatch(/SSO group grants it.*next SSO sign-in/);
+  });
+
   it("marks memberships a GitHub team grants, and makes them manual", async () => {
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     const managed = { user_id: 3, username: "carol", is_active: true, role: "operator", granted_by: "github" };

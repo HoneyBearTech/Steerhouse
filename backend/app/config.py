@@ -1,6 +1,7 @@
 import os
 import re
 import threading
+from collections.abc import Callable
 from typing import Literal
 from urllib.parse import urlsplit
 
@@ -27,6 +28,9 @@ MAX_GITHUB_TEAMS = 100
 MAX_MAPPED_PROJECTS = 100
 # Project roles a team mapping may grant (never the global admin role).
 MAPPABLE_ROLES = ("admin", "operator", "viewer")
+MAX_OIDC_GROUPS = 100  # groups OIDC_ROLE_MAP may name
+MAX_OIDC_GROUP_LENGTH = 255
+MAX_OIDC_TOKEN_GROUPS = 1000  # groups an ID token may list before sign-in is refused
 # An org login goes into an API path, so only GitHub's own login characters are accepted (the
 # underscore for GitHub Enterprise Server). Team slugs are compared, never put into a URL.
 _GITHUB_ORG = re.compile(r"[a-z0-9][a-z0-9_-]{0,38}")
@@ -45,6 +49,49 @@ def _github_team(value: str, setting: str) -> str:
     if not slash or not _GITHUB_ORG.fullmatch(org) or not _GITHUB_TEAM_SLUG.fullmatch(slug):
         raise ValueError(f"{setting}: {value!r} is not a GitHub team as org/team-slug")
     return f"{org}/{slug}"
+
+
+def _check_role_map(
+    value: dict[str, dict[str, str]],
+    setting: str,
+    noun: str,
+    normalise: Callable[[str], str],
+    limit: int,
+) -> dict[str, dict[str, str]]:
+    """Normalise a {group: {project name: role}} setting; refuse anything that isn't one."""
+    if len(value) > limit:
+        raise ValueError(f"{setting} maps more than {limit} {noun}s")
+    role_map: dict[str, dict[str, str]] = {}
+    for raw_group, projects in value.items():
+        key = normalise(raw_group)
+        if key in role_map:
+            raise ValueError(f"{setting} lists {noun} {key} twice")
+        if not projects or len(projects) > MAX_MAPPED_PROJECTS:
+            raise ValueError(
+                f"{setting}: {noun} {key} must map 1 to {MAX_MAPPED_PROJECTS} projects"
+            )
+        mapped: dict[str, str] = {}
+        for raw_name, role in projects.items():
+            name = raw_name.strip()
+            if not name or len(name) > 150:
+                raise ValueError(f"{setting}: {noun} {key} has an invalid project name")
+            if role not in MAPPABLE_ROLES:
+                raise ValueError(
+                    f"{setting}: {noun} {key} gives project {name!r} the role "
+                    f"{role!r} (use one of {', '.join(MAPPABLE_ROLES)})"
+                )
+            mapped[name] = role
+        role_map[key] = mapped
+    return role_map
+
+
+def _oidc_group(value: str) -> str:
+    """A group as the provider spells it in the token: compared exactly, so only the
+    surrounding whitespace goes."""
+    group = value.strip()
+    if not group or len(group) > MAX_OIDC_GROUP_LENGTH or not group.isprintable():
+        raise ValueError(f"OIDC_ROLE_MAP: {value[:40]!r} is not a usable group name")
+    return group
 
 
 def is_placeholder(value: str) -> bool:
@@ -96,6 +143,11 @@ class Settings(BaseSettings):
     oidc_client_secret: str = ""
     oidc_scopes: str = "openid email profile"
     oidc_button_label: str = "SSO"
+    # Optional mapping {"<group>": {"<project name>": "admin|operator|viewer"}} from the groups
+    # listed in the ID token's OIDC_GROUPS_CLAIM: each OIDC sign-in makes the user's
+    # OIDC-granted project memberships match it.
+    oidc_role_map: dict[str, dict[str, str]] = {}
+    oidc_groups_claim: str = "groups"
 
     # Optional native GitHub sign-in (an OAuth App; GitHub is not an OIDC provider). Enabled
     # only when the client id and secret are both set. The URLs are overridable for GitHub
@@ -427,6 +479,11 @@ class Settings(BaseSettings):
                 "OIDC_CLIENT_SECRET together (or none of them)."
             )
         if not self.oidc_enabled:
+            if self.oidc_role_map:
+                raise ValueError(
+                    "OIDC_ROLE_MAP needs OIDC sign-in (OIDC_ISSUER, OIDC_CLIENT_ID and "
+                    "OIDC_CLIENT_SECRET)."
+                )
             return self
         if not self.public_url.startswith(("http://", "https://")):
             raise ValueError("OIDC needs PUBLIC_URL (e.g. https://steerhouse.example.com).")
@@ -457,32 +514,26 @@ class Settings(BaseSettings):
     @field_validator("github_team_role_map")
     @classmethod
     def _check_github_team_role_map(cls, v: dict[str, dict[str, str]]) -> dict[str, dict[str, str]]:
-        if len(v) > MAX_GITHUB_TEAMS:
-            raise ValueError(f"GITHUB_TEAM_ROLE_MAP maps more than {MAX_GITHUB_TEAMS} teams")
-        role_map: dict[str, dict[str, str]] = {}
-        for team, projects in v.items():
-            key = _github_team(team, "GITHUB_TEAM_ROLE_MAP")
-            if key in role_map:
-                raise ValueError(f"GITHUB_TEAM_ROLE_MAP lists team {key} twice")
-            if not projects or len(projects) > MAX_MAPPED_PROJECTS:
-                raise ValueError(
-                    f"GITHUB_TEAM_ROLE_MAP: team {key} must map 1 to {MAX_MAPPED_PROJECTS} projects"
-                )
-            mapped: dict[str, str] = {}
-            for raw_name, role in projects.items():
-                name = raw_name.strip()
-                if not name or len(name) > 150:
-                    raise ValueError(
-                        f"GITHUB_TEAM_ROLE_MAP: team {key} has an invalid project name"
-                    )
-                if role not in MAPPABLE_ROLES:
-                    raise ValueError(
-                        f"GITHUB_TEAM_ROLE_MAP: team {key} gives project {name!r} the role "
-                        f"{role!r} (use one of {', '.join(MAPPABLE_ROLES)})"
-                    )
-                mapped[name] = role
-            role_map[key] = mapped
-        return role_map
+        return _check_role_map(
+            v,
+            "GITHUB_TEAM_ROLE_MAP",
+            "team",
+            lambda team: _github_team(team, "GITHUB_TEAM_ROLE_MAP"),
+            MAX_GITHUB_TEAMS,
+        )
+
+    @field_validator("oidc_role_map")
+    @classmethod
+    def _check_oidc_role_map(cls, v: dict[str, dict[str, str]]) -> dict[str, dict[str, str]]:
+        return _check_role_map(v, "OIDC_ROLE_MAP", "group", _oidc_group, MAX_OIDC_GROUPS)
+
+    @field_validator("oidc_groups_claim")
+    @classmethod
+    def _check_oidc_groups_claim(cls, v: str) -> str:
+        claim = v.strip()
+        if not claim or len(claim) > 100 or not claim.isprintable():
+            raise ValueError("OIDC_GROUPS_CLAIM must be the name of a claim in the ID token")
+        return claim
 
     @property
     def github_gated(self) -> bool:

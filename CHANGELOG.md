@@ -7,6 +7,16 @@ steps when upgrading; those are listed under "Upgrading" and in [docs/upgrading.
 
 ## [Unreleased]
 
+### Added
+
+- Project memberships from OpenID Connect groups: `OIDC_ROLE_MAP` maps groups in the ID token (the claim
+  named by `OIDC_GROUPS_CLAIM`, default `groups`) to project roles by project name, like the GitHub team
+  mapping. Each SSO sign-in adds, changes or removes the memberships it granted (marked **via SSO**,
+  audited); memberships set by hand always win, and a password sign-in or **Unlink SSO** removes the granted
+  ones. A groups claim that isn't a list of strings, or that the provider replaced with a pointer (Entra's
+  overage), refuses the sign-in.
+- README: trusting a private CA for an OpenID Connect provider (`SSL_CERT_FILE`).
+
 ## [0.7.0] - 2026-10-20
 
 The secret store reaches more of Steerhouse: git tokens can live in it, existing secrets can move into it, runs

@@ -564,6 +564,20 @@ That file **replaces** the built-in list of trusted CAs for all of the backend's
 (notifications, GitHub, the secret store), so it must hold the public CAs as well as yours, for example
 the system bundle with your CA appended. Without it, sign-in fails closed with a generic "failed" error.
 
+**Project memberships from groups.** `OIDC_ROLE_MAP={"ops": {"Default": "operator"}}` gives people whose ID
+token lists the group `ops` the operator role in the project named `Default` (roles `admin`, `operator` or
+`viewer`; the highest wins when several groups map to one project; never the global admin role). The groups
+are read from the ID token's `groups` claim, or the claim named in `OIDC_GROUPS_CLAIM`, and compared exactly
+as the provider spells them (Keycloak uses paths like `/ops` unless you turn off *Full group path* on its
+mapper; Entra uses group object IDs). Your provider has to put the claim in the ID token: in Keycloak add a
+*Group Membership* mapper to the client, in Entra add a groups claim to the app's token configuration. It
+works like the GitHub mapping below: each SSO sign-in adds, changes or removes the memberships the map
+granted, shown as **via SSO**; memberships set by hand (or by GitHub) are never touched; a password sign-in
+or **Unlink SSO** removes the granted ones; every change is in the audit log. A claim that isn't a list of
+strings, or that the provider replaced with a pointer to look the groups up (Entra does this for users in
+many groups), refuses the sign-in instead of reading as "no groups", so nobody loses or keeps access by
+accident. A missing claim means no groups.
+
 **GitHub**
 
 1. Create an OAuth App (GitHub → Settings → Developer settings → OAuth Apps) whose callback URL is

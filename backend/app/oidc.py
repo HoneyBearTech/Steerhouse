@@ -16,10 +16,11 @@ from joserfc.errors import JoseError
 from joserfc.jwk import KeySet
 from sqlalchemy.orm import Session
 
-from app.config import Settings
+from app.config import MAX_OIDC_TOKEN_GROUPS, Settings
 from app.sso_common import (
     SsoError,
     SsoSignIn,
+    desired_memberships,
     http_client,
     pkce_challenge,
     resolve_user,
@@ -28,6 +29,7 @@ from app.sso_common import (
 )
 
 FLOW = "oidc"
+SOURCE = "oidc"  # project_members.granted_by of the memberships OIDC_ROLE_MAP manages
 STATE_COOKIE_NAME = "steerhouse_oidc"
 STATE_COOKIE_PATH = "/api/auth/oidc"
 CALLBACK_PATH = "/api/auth/oidc/callback"
@@ -184,6 +186,28 @@ def _verify_id_token(settings: Settings, metadata: dict, id_token: str, nonce: s
     return claims
 
 
+def _token_groups(settings: Settings, claims: dict) -> list[str]:
+    """The groups the ID token lists in OIDC_GROUPS_CLAIM. A missing claim means no groups
+    (Keycloak, for one, leaves it out for a user without any). A claim the provider replaced
+    with a pointer (Entra's "overage" for users in too many groups) or that isn't a list of
+    strings can't be read as "no groups": sign-in is refused rather than quietly removing
+    access."""
+    name = settings.oidc_groups_claim
+    pointers = claims.get("_claim_names")
+    if isinstance(pointers, dict) and name in pointers:
+        raise SsoError("failed", f"ID token points elsewhere for its {name} claim (overage)")
+    value = claims.get(name)
+    if value is None:
+        return []
+    if (
+        not isinstance(value, list)
+        or len(value) > MAX_OIDC_TOKEN_GROUPS
+        or not all(isinstance(group, str) for group in value)
+    ):
+        raise SsoError("failed", f"ID token {name} claim is not a short list of strings")
+    return value
+
+
 def complete_login(
     db: Session, settings: Settings, *, cookie: str, code: str, state: str
 ) -> SsoSignIn:
@@ -202,7 +226,11 @@ def complete_login(
         raise SsoError("failed", "ID token has no email claim")
     if claims.get("email_verified") is not True:
         raise SsoError("not_linked", "provider did not verify the email", email=email)
+    groups = _token_groups(settings, claims) if settings.oidc_role_map else []
     user, newly_linked = resolve_user(
         db, settings, settings.oidc_issuer, str(claims["sub"]), [email.strip()]
     )
-    return SsoSignIn(user, newly_linked)
+    # Always returned, empty without a map: dropping the map removes what it granted.
+    grants, unknown = desired_memberships(db, settings.oidc_role_map, groups)
+    notes = {"unknown_projects": unknown} if unknown else {}
+    return SsoSignIn(user, newly_linked, source=SOURCE, grants=grants, notes=notes)

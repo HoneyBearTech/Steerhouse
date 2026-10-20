@@ -37,7 +37,14 @@ class Provider:
     sync_via: str = "sso group"
 
 
-_OIDC = Provider(oidc, "sso", lambda s: s.oidc_enabled, lambda s: s.oidc_issuer)
+_OIDC = Provider(
+    oidc,
+    "sso",
+    lambda s: s.oidc_enabled,
+    lambda s: s.oidc_issuer,
+    sync_actor="(oidc group sync)",
+    sync_via="oidc group",
+)
 _GITHUB = Provider(
     github_login,
     "github",

@@ -155,7 +155,8 @@ function MembersPanel({ project }: { project: ProjectSummary }) {
       {members.map((member) => {
         const isSelf = member.username === user?.username;
         const locked = isSelf && !isGlobalAdmin;
-        const managed = member.granted_by === "github";
+        const managed = member.granted_by ?? null;
+        const provider = managed === "oidc" ? "SSO" : "GitHub";
         return (
           <div key={member.user_id} className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2 text-sm">
@@ -165,9 +166,9 @@ function MembersPanel({ project }: { project: ProjectSummary }) {
               {managed && (
                 <Badge
                   variant="outline"
-                  title="Granted by a GitHub team mapping: updated at each GitHub sign-in, removed at a password sign-in. Setting the role here makes it manual."
+                  title={`Granted by a ${managed === "oidc" ? "group" : "GitHub team"} mapping: updated at each ${provider} sign-in, removed at a password sign-in. Setting the role here makes it manual.`}
                 >
-                  via GitHub
+                  via {provider}
                 </Badge>
               )}
             </div>
@@ -209,7 +210,9 @@ function MembersPanel({ project }: { project: ProjectSummary }) {
                     if (
                       window.confirm(
                         `Remove ${member.username} from ${project.name}? They lose access to it at once.` +
-                          (managed ? " Their GitHub team grants it: they get it back at their next GitHub sign-in." : ""),
+                          (managed
+                            ? ` Their ${managed === "oidc" ? "SSO group" : "GitHub team"} grants it: they get it back at their next ${provider} sign-in.`
+                            : ""),
                       )
                     ) {
                       run(() => api.removeProjectMember(project.id, member.user_id));
