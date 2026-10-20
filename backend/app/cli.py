@@ -10,6 +10,11 @@
                                      and recovery codes; reset-totp is the old name)
     reencrypt-secrets                re-encrypt stored secrets under the first
                                      CREDENTIAL_ENCRYPTION_KEY (a key rotation)
+    wrap-key                         encrypt the Fernet key list on stdin with the secret
+                                     store's Transit key (CREDENTIAL_ENCRYPTION_KEY_WRAPPED);
+                                     needs BAO_TOKEN with transit/encrypt
+    rewrap-key                       move CREDENTIAL_ENCRYPTION_KEY_WRAPPED to the Transit
+                                     key's latest version; needs BAO_TOKEN with transit/rewrap
     analytics-grant <role>           let a (Grafana) database role read the analytics views
     analytics-check <role>           check such a role can read nothing else
     analytics-revoke <role>          take that access away again
@@ -19,10 +24,11 @@ codes when no other admin can reset it from the Users page.
 """
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
-from app import analytics, audit, totp
+from app import analytics, audit, crypto, secret_store, totp
 from app.config import get_settings
 from app.db import get_sessionmaker, init_db
 from app.key_rotation import RotationFailed, reencrypt_all
@@ -61,7 +67,14 @@ def reset_two_factor(username: str) -> int:
 
 def reencrypt_secrets() -> int:
     init_db()
-    old_keys = len(get_settings().credential_encryption_keys) - 1
+    if not crypto.unlock():
+        print(
+            "The credential encryption key is wrapped and the secret store has not unwrapped it "
+            f"({crypto.key_state()['key_error'] or 'unknown error'}). Nothing was changed.",
+            file=sys.stderr,
+        )
+        return 1
+    old_keys = len(crypto.encryption_keys()) - 1
     db = get_sessionmaker()()
     try:
         try:
@@ -83,13 +96,66 @@ def reencrypt_secrets() -> int:
             f"{result.current} already were."
         )
         if old_keys:
+            setting = (
+                "CREDENTIAL_ENCRYPTION_KEY_WRAPPED (wrap the list again without them: "
+                "`python -m app.cli wrap-key`)"
+                if get_settings().credential_encryption_key_wrapped
+                else "CREDENTIAL_ENCRYPTION_KEY"
+            )
             print(
-                f"CREDENTIAL_ENCRYPTION_KEY still lists {old_keys} old key(s) after the first: "
+                f"{setting} still lists {old_keys} old key(s) after the first: "
                 "remove them and restart the API."
             )
         return 0
     finally:
         db.close()
+
+
+def _operator_token() -> str | None:
+    """The token of the person running wrap-key or rewrap-key (as for the bao/vault CLI):
+    Steerhouse's own login is only allowed to decrypt."""
+    return os.environ.get("BAO_TOKEN") or os.environ.get("VAULT_TOKEN") or None
+
+
+def wrap_key() -> int:
+    """Prints the Fernet key list read from stdin, encrypted by the Transit key, for
+    CREDENTIAL_ENCRYPTION_KEY_WRAPPED."""
+    token = _operator_token()
+    if token is None or not get_settings().secrets_store_enabled:
+        print(
+            "Set SECRETS_STORE_URL and BAO_TOKEN (or VAULT_TOKEN): a token that may use "
+            "transit/encrypt on the key.",
+            file=sys.stderr,
+        )
+        return 1
+    text = sys.stdin.read().strip()
+    try:
+        crypto.parse_keys(text)
+        print(secret_store.transit_encrypt(text, token))
+    except secret_store.SecretStoreError as exc:
+        print(f"Nothing was wrapped: {exc}.", file=sys.stderr)
+        return 1
+    return 0
+
+
+def rewrap_key() -> int:
+    """Prints CREDENTIAL_ENCRYPTION_KEY_WRAPPED under the Transit key's latest version (after
+    a rotation of that key), without the store showing the keys."""
+    token = _operator_token()
+    wrapped = get_settings().credential_encryption_key_wrapped
+    if token is None or not wrapped:
+        print(
+            "Needs CREDENTIAL_ENCRYPTION_KEY_WRAPPED and BAO_TOKEN (or VAULT_TOKEN): a token "
+            "that may use transit/rewrap on the key.",
+            file=sys.stderr,
+        )
+        return 1
+    try:
+        print(secret_store.transit_rewrap(wrapped, token))
+    except secret_store.SecretStoreError as exc:
+        print(f"Nothing was rewrapped: {exc}.", file=sys.stderr)
+        return 1
+    return 0
 
 
 def migrate() -> int:
@@ -161,6 +227,15 @@ def main(argv: list[str] | None = None) -> int:
         "reencrypt-secrets",
         help="re-encrypt stored secrets under the first CREDENTIAL_ENCRYPTION_KEY (key rotation)",
     )
+    commands.add_parser(
+        "wrap-key",
+        help="encrypt the Fernet key list on stdin with the secret store's Transit key "
+        "(CREDENTIAL_ENCRYPTION_KEY_WRAPPED)",
+    )
+    commands.add_parser(
+        "rewrap-key",
+        help="move CREDENTIAL_ENCRYPTION_KEY_WRAPPED to the Transit key's latest version",
+    )
     for name, about in (
         ("analytics-grant", "let a database role read the analytics views (for Grafana)"),
         ("analytics-check", "check a role can read the analytics views and nothing else"),
@@ -176,6 +251,10 @@ def main(argv: list[str] | None = None) -> int:
         return import_legacy(args.path, args.check)
     if args.command == "reencrypt-secrets":
         return reencrypt_secrets()
+    if args.command == "wrap-key":
+        return wrap_key()
+    if args.command == "rewrap-key":
+        return rewrap_key()
     return reset_two_factor(args.username)
 
 

@@ -44,6 +44,18 @@ function SecretStoreCard({ status }: { status: SecretStoreStatus }) {
             queue.
           </p>
         )}
+        {status.key_wrapped && status.key_locked && (
+          <p className="text-sm text-destructive">
+            The credential encryption key is locked{status.key_error ? ` (${status.key_error.replace(/_/g, " ")})` : ""}
+            : the store has not unwrapped it yet, so anything that reads or writes a stored secret, a run that
+            uses one, and signing in with a second factor wait. Steerhouse asks again every few seconds.
+          </p>
+        )}
+        {status.key_wrapped && status.key_locked === false && (
+          <p className="text-sm text-muted-foreground">
+            The credential encryption key is wrapped by the store and unwrapped in memory.
+          </p>
+        )}
         <p className="text-sm text-muted-foreground">
           Checked {when(status.checked_at)} · last reachable {when(status.last_ok_at)}
           {status.token_ttl !== null && status.token_ttl !== undefined &&

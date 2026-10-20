@@ -64,6 +64,7 @@ _STORE_PROBLEMS = {
     "sealed": "is sealed",
     "tls": "has a TLS certificate Steerhouse doesn't trust",
     "auth_failed": "refuses Steerhouse's login",
+    "key_locked": "hasn't unwrapped Steerhouse's credential encryption key",
 }
 
 

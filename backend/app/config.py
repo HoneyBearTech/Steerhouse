@@ -299,14 +299,23 @@ class Settings(BaseSettings):
     # app must fail fast at startup if it's unset rather than silently falling
     # back to a shared/insecure key.
     credential_encryption_key: str = Field(
+        "",
         description="Fernet key used to encrypt credential secrets at rest. "
         'Generate with: python -c "from cryptography.fernet import Fernet; '
-        'print(Fernet.generate_key().decode())"'
+        'print(Fernet.generate_key().decode())"',
     )
+    # The same key list, encrypted by the secret store's Transit engine (a "vault:v1:..."
+    # ciphertext): Steerhouse unwraps it at startup into memory and keeps no plaintext key in its
+    # configuration. Exactly one of the two settings must be set.
+    credential_encryption_key_wrapped: str = ""
+    secrets_store_transit_mount: str = "transit"
+    secrets_store_transit_key: str = "steerhouse"
 
     @field_validator("credential_encryption_key")
     @classmethod
     def _valid_fernet_keys(cls, v: str) -> str:
+        if not v:
+            return ""  # unset: checked with CREDENTIAL_ENCRYPTION_KEY_WRAPPED in _check_key_source
         keys = [key.strip() for key in v.split(",") if key.strip()]
         if not keys:
             raise ValueError("CREDENTIAL_ENCRYPTION_KEY is empty")
@@ -323,10 +332,40 @@ class Settings(BaseSettings):
             raise ValueError("CREDENTIAL_ENCRYPTION_KEY lists the same key twice")
         return ",".join(keys)
 
+    @field_validator("credential_encryption_key_wrapped")
+    @classmethod
+    def _valid_wrapped_key(cls, v: str) -> str:
+        v = v.strip()
+        # Never echo it: the ciphertext is useless without the store, but there is no need.
+        if v and not re.fullmatch(r"vault:v[0-9]{1,6}:[A-Za-z0-9+/]+={0,2}", v):
+            raise ValueError(
+                "CREDENTIAL_ENCRYPTION_KEY_WRAPPED must be a Transit ciphertext (vault:v1:...)"
+            )
+        return v
+
+    @model_validator(mode="after")
+    def _check_key_source(self) -> "Settings":
+        if bool(self.credential_encryption_key) == bool(self.credential_encryption_key_wrapped):
+            raise ValueError(
+                "set exactly one of CREDENTIAL_ENCRYPTION_KEY and CREDENTIAL_ENCRYPTION_KEY_WRAPPED"
+            )
+        if self.credential_encryption_key_wrapped:
+            if not self.secrets_store_url:
+                raise ValueError("CREDENTIAL_ENCRYPTION_KEY_WRAPPED needs SECRETS_STORE_URL")
+            segment = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_.-]{0,99}$")
+            for name in ("secrets_store_transit_mount", "secrets_store_transit_key"):
+                if not segment.match(getattr(self, name)):
+                    raise ValueError(
+                        f"{name.upper()} must be one path segment (letters, digits, ._-)"
+                    )
+        return self
+
     @property
     def credential_encryption_keys(self) -> list[str]:
-        """The current key first (it encrypts), then old ones that only decrypt (a rotation)."""
-        return self.credential_encryption_key.split(",")
+        """The plaintext CREDENTIAL_ENCRYPTION_KEY list, the current key first (it encrypts),
+        then old ones that only decrypt (a rotation). Empty when the keys are wrapped: use
+        app.crypto.encryption_keys(), which unwraps them."""
+        return self.credential_encryption_key.split(",") if self.credential_encryption_key else []
 
     @field_validator("public_url", "github_url", "github_api_url")
     @classmethod
@@ -671,7 +710,7 @@ class Settings(BaseSettings):
                     f"ENVIRONMENT=production but {', '.join(insecure)} still has its insecure "
                     "default. Set a real value."
                 )
-            if self.credential_encryption_keys[0] == EXAMPLE_CREDENTIAL_ENCRYPTION_KEY:
+            if self.credential_encryption_keys[:1] == [EXAMPLE_CREDENTIAL_ENCRYPTION_KEY]:
                 raise ValueError(
                     "ENVIRONMENT=production refuses the example CREDENTIAL_ENCRYPTION_KEY from "
                     '.env.example: anyone can decrypt with it. Generate a key (python -c "from '

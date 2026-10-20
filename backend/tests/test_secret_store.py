@@ -6,6 +6,7 @@ import inspect
 import json
 import logging
 import os
+import re
 import time
 
 import httpx
@@ -20,6 +21,24 @@ from app.worker import client as worker_client
 
 ROOT = "http://bao.test:8200"
 VALUE = "-----BEGIN OPENSSH PRIVATE KEY-----\nsentinel-key-value\n-----END OPENSSH PRIVATE KEY-----"
+
+
+def _fake_transit(state: dict, op: str, request: httpx.Request) -> httpx.Response:
+    """Transit with a readable ciphertext, vault:v<key version>:<the base64 plaintext>; the key
+    version is state["transit_version"] (default 1) and a rewrap moves to it."""
+    version = state.get("transit_version", 1)
+    state.setdefault("transit_calls", []).append((op, request.headers.get("X-Vault-Token")))
+    body = json.loads(request.content)
+    if op == "encrypt":
+        return httpx.Response(
+            200, json={"data": {"ciphertext": f"vault:v{version}:{body['plaintext']}"}}
+        )
+    match = re.fullmatch(r"vault:v(\d+):([A-Za-z0-9+/]+={0,2})", body.get("ciphertext", ""))
+    if not match or int(match.group(1)) > version:
+        return httpx.Response(400, json={"errors": ["invalid ciphertext"]})
+    if op == "decrypt":
+        return httpx.Response(200, json={"data": {"plaintext": match.group(2)}})
+    return httpx.Response(200, json={"data": {"ciphertext": f"vault:v{version}:{match.group(2)}"}})
 
 
 @pytest.fixture
@@ -68,6 +87,9 @@ def store(monkeypatch, tmp_path):
                     "auth": {"client_token": f"approle-{state['logins']}", "lease_duration": 600}
                 },
             )
+        transit = re.fullmatch(r"/v1/transit/(encrypt|decrypt|rewrap)/steerhouse", path)
+        if transit:
+            return _fake_transit(state, transit.group(1), request)
         for method in ("jwt", "kubernetes", "corp-jwt"):
             if path == f"/v1/auth/{method}/login":
                 body = json.loads(request.content)

@@ -30,6 +30,7 @@ logger = logging.getLogger("app.worker")
 # secrets; a playbook could read them from the worker's environment).
 FORBIDDEN_ENV = (
     "CREDENTIAL_ENCRYPTION_KEY",
+    "CREDENTIAL_ENCRYPTION_KEY_WRAPPED",
     "DATABASE_URL",
     "AUTH_SECRET_KEY",
     "SECRETS_STORE_TOKEN_FILE",

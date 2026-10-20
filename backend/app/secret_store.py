@@ -23,6 +23,7 @@ share a deadline (SECRETS_STORE_TIMEOUT_SECONDS, at most 10 s): the worker gives
 after 15 s.
 """
 
+import base64
 import contextlib
 import logging
 import os
@@ -74,9 +75,11 @@ _KIND_TEXT = {
     "ssh_refused": "the SSH role refused to sign the key (check its key types, certificate "
     "type, extensions and maximum TTL)",
     "bad_certificate": "the secret store's certificate doesn't match what was asked for",
+    "key_locked": "the credential encryption key is locked: the secret store has not unwrapped "
+    "it yet (Steerhouse tries again every few seconds)",
 }
 # Kinds that mean the store as a whole is unusable (an ops alert), not one bad reference.
-OUTAGE_KINDS = frozenset({"unreachable", "tls", "sealed", "auth_failed"})
+OUTAGE_KINDS = frozenset({"unreachable", "tls", "sealed", "auth_failed", "key_locked"})
 
 
 class SecretStoreError(Exception):
@@ -86,6 +89,15 @@ class SecretStoreError(Exception):
     def __init__(self, kind: str, detail: str | None = None) -> None:
         self.kind = kind
         super().__init__(detail or _KIND_TEXT[kind])
+
+
+class KeyLocked(SecretStoreError):
+    """Something needs the credential encryption key and the store has not unwrapped it yet
+    (CREDENTIAL_ENCRYPTION_KEY_WRAPPED). `reason` is the error kind the last attempt ended in."""
+
+    def __init__(self, reason: str | None = None) -> None:
+        self.reason = reason
+        super().__init__("key_locked")
 
 
 class TtlTooLong(SecretStoreError):
@@ -436,6 +448,33 @@ class _Client:
             break
         return response
 
+    def transit(self, op: str, body: dict, deadline: float, *, token: str | None = None) -> dict:
+        """One call to the Transit key (decrypt, encrypt or rewrap); its `data`. `token` is an
+        operator's own (the wrap-key and rewrap-key commands), else Steerhouse's login, which
+        needs only decrypt and rewrap."""
+        settings = get_settings()
+        api_path = _api_path(
+            settings.secrets_store_transit_mount, op, settings.secrets_store_transit_key
+        )
+        for attempt in range(2):
+            relogin = attempt == 0 and token is None and settings.secrets_store_relogin
+            response = self._request(
+                "POST", api_path, deadline, token=token or self.token(deadline), json=body
+            )
+            if response.status_code == 403 and relogin:
+                self.forget_token()  # a revoked or expired token looks like a denial
+                continue
+            break
+        if response.status_code != 200:
+            raise self._fail(response)
+        try:
+            data = response.json()["data"]
+            if not isinstance(data, dict):
+                raise TypeError
+        except (ValueError, KeyError, TypeError):
+            raise SecretStoreError("bad_response") from None
+        return data
+
     def read_data(self, project_id: int, path: str, deadline: float) -> tuple[dict, int]:
         """(every key of a project's secret, version)."""
         settings = get_settings()
@@ -586,6 +625,35 @@ def enabled() -> bool:
 
 def _deadline() -> float:
     return time.monotonic() + get_settings().secrets_store_timeout_seconds
+
+
+def transit_decrypt(ciphertext: str) -> str:
+    """The text a Transit ciphertext holds (SecretStoreError when it can't be had)."""
+    data = _client.transit("decrypt", {"ciphertext": ciphertext}, _deadline())
+    try:
+        return base64.b64decode(str(data["plaintext"]), validate=True).decode()
+    except (KeyError, ValueError):
+        raise SecretStoreError("bad_response") from None
+
+
+def transit_encrypt(plaintext: str, token: str | None = None) -> str:
+    data = _client.transit(
+        "encrypt",
+        {"plaintext": base64.b64encode(plaintext.encode()).decode()},
+        _deadline(),
+        token=token,
+    )
+    if not isinstance(data.get("ciphertext"), str):
+        raise SecretStoreError("bad_response")
+    return data["ciphertext"]
+
+
+def transit_rewrap(ciphertext: str, token: str | None = None) -> str:
+    """The same text under the Transit key's latest version, without the store showing it."""
+    data = _client.transit("rewrap", {"ciphertext": ciphertext}, _deadline(), token=token)
+    if not isinstance(data.get("ciphertext"), str):
+        raise SecretStoreError("bad_response")
+    return data["ciphertext"]
 
 
 def read_secret(project_id: int, path: str, key: str, deadline: float | None = None) -> str:
@@ -748,6 +816,9 @@ def status() -> dict:
 def reset() -> None:
     """Forget login and probe state (tests, config changes)."""
     _client.forget_token()
+    from app import crypto
+
+    crypto.forget_unwrapped_key()
     with _status_lock:
         _status.clear()
         _status["enabled"] = False

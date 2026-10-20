@@ -15,7 +15,7 @@ from psycopg.errors import NumericValueOutOfRange
 from sqlalchemy.exc import DataError
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from app import audit, metrics, secret_store, store_outage
+from app import audit, crypto, metrics, secret_store, store_outage
 from app.bootstrap import refuse_to_start_over_legacy_data, seed_fresh_install
 from app.config import get_settings
 from app.db import get_sessionmaker, init_db
@@ -58,6 +58,7 @@ from app.routers import (
 from app.routers import (
     secret_store as secret_store_router,
 )
+from app.secret_store import KeyLocked
 from app.storage import galaxy_collections_dir, galaxy_roles_dir
 
 logger = logging.getLogger(__name__)
@@ -121,6 +122,11 @@ def _probe_secret_store() -> bool:
     """Checks the secret store, raises or clears its ops alert and records or ends an outage
     (app.store_outage). Whether it works."""
     result = secret_store.probe()
+    if result["ok"] and get_settings().credential_encryption_key_wrapped:
+        crypto.unlock()  # a no-op once unwrapped
+        if crypto.key_state()["key_locked"]:
+            result["ok"] = False
+            result["error_kind"] = "key_locked"
     label = settings.secrets_store_label
     db = get_sessionmaker()()
     store_back = False
@@ -164,7 +170,15 @@ async def _reap_forever() -> None:
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     disable_process_inspection()
-    if old_keys := len(settings.credential_encryption_keys) - 1:
+    if settings.credential_encryption_key_wrapped:
+        # Not fatal: the API serves what doesn't need the key and the probe keeps trying.
+        if not await asyncio.to_thread(crypto.unlock):
+            logger.warning(
+                "the credential encryption key is wrapped and could not be unwrapped yet "
+                "(%s): what needs it waits until the secret store answers",
+                crypto.key_state()["key_error"],
+            )
+    elif old_keys := len(settings.credential_encryption_keys) - 1:
         logger.warning(
             "CREDENTIAL_ENCRYPTION_KEY lists %d old key(s) after the current one: run "
             "`python -m app.cli reencrypt-secrets`, then remove them",
@@ -218,6 +232,17 @@ async def _invalid_request(_request: Request, exc: RequestValidationError) -> JS
     why only."""
     errors = [{k: v for k, v in e.items() if k not in ("input", "ctx")} for e in exc.errors()]
     return JSONResponse({"detail": jsonable_encoder(errors)}, status_code=422)
+
+
+@app.exception_handler(KeyLocked)
+async def _key_locked(_request: Request, _exc: KeyLocked) -> JSONResponse:
+    """Something needed the credential encryption key while the secret store has not
+    unwrapped it (CREDENTIAL_ENCRYPTION_KEY_WRAPPED): not a server bug, so say what to wait for."""
+    return JSONResponse(
+        {"detail": secret_store.explain("key_locked")},
+        status_code=503,
+        headers={"Retry-After": "10"},
+    )
 
 
 @app.exception_handler(DataError)

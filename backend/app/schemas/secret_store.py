@@ -34,5 +34,10 @@ class SecretStoreStatus(BaseModel):
     # How long runs and refreshes that need it wait while it is down (0: they fail at once),
     # and the current outage (app.store_outage): its error kind and since when.
     wait_minutes: int = 0
+    # CREDENTIAL_ENCRYPTION_KEY_WRAPPED: whether the keys are wrapped by the store's Transit
+    # engine, whether this process holds them yet, and the error kind of the last attempt.
+    key_wrapped: bool = False
+    key_locked: bool | None = None
+    key_error: str | None = None
     outage_kind: str | None = None
     outage_since: datetime | None = None

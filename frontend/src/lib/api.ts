@@ -624,6 +624,11 @@ export interface SecretStoreStatus {
   wait_minutes?: number;
   outage_kind?: string | null;
   outage_since?: string | null;
+  // CREDENTIAL_ENCRYPTION_KEY_WRAPPED: the credential encryption key is kept encrypted by the
+  // store's Transit engine; locked until Steerhouse has had it unwrapped (key_error: why not).
+  key_wrapped?: boolean;
+  key_locked?: boolean | null;
+  key_error?: string | null;
 }
 
 /** Either the secret itself, or a reference into the secret store. */

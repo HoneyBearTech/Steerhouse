@@ -23,6 +23,13 @@ steps when upgrading; those are listed under "Upgrading" and in [docs/upgrading.
   `SECRETS_STORE_JWT_MOUNT` for a non-default mount). The file is read at every login, and Steerhouse logs in
   again at two thirds of the token's life and once after a denial, like AppRole. The workers refuse to start
   with the new variables set, like the other store settings.
+- The credential encryption key can be kept wrapped by the secret store's Transit engine:
+  `CREDENTIAL_ENCRYPTION_KEY_WRAPPED` (a `vault:v1:...` ciphertext) instead of `CREDENTIAL_ENCRYPTION_KEY`,
+  with `SECRETS_STORE_TRANSIT_MOUNT` / `SECRETS_STORE_TRANSIT_KEY`. Steerhouse unwraps it at start-up into memory
+  only (its login needs just `decrypt` and `rewrap`); while the store is away it still starts, and what needs the
+  key waits (API calls answer 503, runs wait like for any store outage). New commands `wrap-key` and
+  `rewrap-key`, and `key_wrapped` / `key_locked` / `key_error` in `GET /api/secret-store/status`. The workers
+  refuse to start with the new variable set.
 - README: trusting a private CA for an OpenID Connect provider (`SSL_CERT_FILE`).
 
 ## [0.7.0] - 2026-10-20

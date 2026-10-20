@@ -160,7 +160,8 @@ def test_the_key_setting_lists_valid_distinct_keys(monkeypatch) -> None:
     monkeypatch.setenv("CREDENTIAL_ENCRYPTION_KEY", f" {KEY_B} , {KEY_A} ")
     assert Settings(_env_file=None).credential_encryption_keys == [KEY_B, KEY_A]
     for value, message in (
-        ("", "is empty"),
+        ("", "set exactly one of"),
+        (" , ", "is empty"),
         (f"{KEY_A},not-a-key", "key 2 is not a Fernet key"),
         (f"{KEY_A},{KEY_A}", "the same key twice"),
     ):

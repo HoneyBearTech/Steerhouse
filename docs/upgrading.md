@@ -67,6 +67,10 @@ upgrading, with the old `STEERHOUSE_VERSION`.
 
 ## Changing the encryption key
 
+(If you keep the key wrapped by the secret store's Transit engine, wrap the list `new,old` with
+`python -m app.cli wrap-key` and set `CREDENTIAL_ENCRYPTION_KEY_WRAPPED` to it in place of the file edit in
+step 2; step 4 wraps the new key alone. See the README.)
+
 Change `credential_encryption_key` when it may have leaked, or if your installation still uses the example
 key from the repository's `.env.example` (production refuses to start with that one first). The file can
 list several keys, separated by commas: the first encrypts, and all of them decrypt.

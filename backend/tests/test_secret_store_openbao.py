@@ -188,6 +188,75 @@ def test_a_real_login_with_a_jwt(client, jwt_login, monkeypatch, tmp_path) -> No
     get_settings.cache_clear()
 
 
+def test_a_real_transit_key_wraps_unwraps_and_rewraps_the_fernet_key(
+    client, monkeypatch, tmp_path, capsys
+) -> None:
+    """The operator wraps the key list with their own token; Steerhouse's token may only decrypt
+    and rewrap; after the Transit key is rotated the old ciphertext still unwraps and a rewrap
+    moves it to version 2."""
+    import io
+
+    from cryptography.fernet import Fernet
+
+    from app import crypto
+    from app.cli import main as cli
+
+    mount, key = "transit-test", f"steerhouse-{uuid.uuid4().hex[:8]}"  # a key not rotated before
+    keys = f"{Fernet.generate_key().decode()},{Fernet.generate_key().decode()}"
+    with _admin() as bao:
+        bao.post(f"/v1/sys/mounts/{mount}", json={"type": "transit"})  # 400 once it exists
+        assert bao.post(f"/v1/{mount}/keys/{key}").status_code in (200, 204)
+        policy = (
+            f'path "{mount}/decrypt/{key}" {{ capabilities = ["update"] }}\n'
+            f'path "{mount}/rewrap/{key}" {{ capabilities = ["update"] }}\n'
+        )
+        assert (
+            bao.put(
+                "/v1/sys/policies/acl/steerhouse-test-transit", json={"policy": policy}
+            ).status_code
+            == 204
+        )
+        token = bao.post(
+            "/v1/auth/token/create", json={"policies": ["steerhouse-test-transit"], "ttl": "10m"}
+        ).json()["auth"]["client_token"]
+    token_file = tmp_path / "token"
+    token_file.write_text(token)
+    monkeypatch.setenv("SECRETS_STORE_URL", ADDR)
+    monkeypatch.setenv("SECRETS_STORE_AUTH", "token")
+    monkeypatch.setenv("SECRETS_STORE_TOKEN_FILE", str(token_file))
+    monkeypatch.setenv("SECRETS_STORE_TRANSIT_MOUNT", mount)
+    monkeypatch.setenv("SECRETS_STORE_TRANSIT_KEY", key)
+    get_settings.cache_clear()
+    secret_store.reset()
+
+    monkeypatch.setenv("BAO_TOKEN", ROOT)  # the operator
+    monkeypatch.setattr("sys.stdin", io.StringIO(keys))
+    assert cli(["wrap-key"]) == 0
+    wrapped = capsys.readouterr().out.strip()
+    assert wrapped.startswith("vault:v1:") and keys.split(",")[0] not in wrapped
+
+    monkeypatch.delenv("CREDENTIAL_ENCRYPTION_KEY")
+    monkeypatch.setenv("CREDENTIAL_ENCRYPTION_KEY_WRAPPED", wrapped)
+    get_settings.cache_clear()
+    assert crypto.encryption_keys() == keys.split(",")
+    with pytest.raises(SecretStoreError) as refused:  # Steerhouse's own token can't wrap
+        secret_store.transit_encrypt("x")
+    assert refused.value.kind == "denied"
+
+    with _admin() as bao:
+        assert bao.post(f"/v1/{mount}/keys/{key}/rotate").status_code in (200, 204)
+    crypto.forget_unwrapped_key()
+    assert crypto.encryption_keys() == keys.split(",")  # version 1 still unwraps
+    assert cli(["rewrap-key"]) == 0
+    rewrapped = capsys.readouterr().out.strip()
+    assert rewrapped.startswith("vault:v2:")
+    monkeypatch.setenv("CREDENTIAL_ENCRYPTION_KEY_WRAPPED", rewrapped)
+    get_settings.cache_clear()
+    crypto.forget_unwrapped_key()
+    assert crypto.encryption_keys() == keys.split(",")
+    secret_store.reset()
+
+
 def test_a_real_read_through_approle(store) -> None:
     put_secret(1, "web/ssh", {"private_key": "k1", "other": "x"})
     value, version = secret_store.read_versioned(1, "web/ssh", "private_key")

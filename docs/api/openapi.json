@@ -6414,6 +6414,33 @@
             ],
             "title": "Error Kind"
           },
+          "key_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key Error"
+          },
+          "key_locked": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key Locked"
+          },
+          "key_wrapped": {
+            "default": false,
+            "title": "Key Wrapped",
+            "type": "boolean"
+          },
           "label": {
             "title": "Label",
             "type": "string"

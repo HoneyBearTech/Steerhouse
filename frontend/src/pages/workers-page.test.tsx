@@ -76,6 +76,26 @@ describe("workers", () => {
     expect(screen.getByText(/Unavailable since .*: what needs it is held in the queue/)).toBeInTheDocument();
   });
 
+  it("says when the credential encryption key is locked, and when it is unwrapped", async () => {
+    const locked = renderApp("/workers", {
+      routes: {
+        "GET /workers": [worker()],
+        "GET /secret-store/status": { ...STORE_DOWN, key_wrapped: true, key_locked: true, key_error: "sealed" },
+      },
+    });
+    expect(await locked.screen.findByText(/The credential encryption key is locked \(sealed\)/)).toBeInTheDocument();
+    locked.unmount();
+
+    const open = renderApp("/workers", {
+      routes: {
+        "GET /workers": [worker()],
+        "GET /secret-store/status": { ...STORE_DOWN, ok: true, key_wrapped: true, key_locked: false },
+      },
+    });
+    expect(await open.screen.findByText(/wrapped by the store and unwrapped in memory/)).toBeInTheDocument();
+    expect(open.screen.queryByText(/key is locked/)).not.toBeInTheDocument();
+  });
+
   it("shows which workers keep their runs away from the API and cloud metadata", async () => {
     const { screen } = renderApp("/workers", {
       routes: {

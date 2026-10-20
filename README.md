@@ -241,6 +241,43 @@ enforce it too, set `SECRETS_STORE_PROJECT_POLICY=steerhouse-project-{project_id
 `token_policies`, and add `path "auth/token/create" { capabilities = ["update"] }` to its policy: each read then
 uses a single-use child token that holds only that project's policy.
 
+**Keeping the encryption key in the store (Transit).** `CREDENTIAL_ENCRYPTION_KEY` protects every secret stored
+in Steerhouse's database, yet sits in `.env` or a secret file. With the secret store you can keep it there as a
+ciphertext instead, so a leaked `.env` or backup is not enough to read your secrets:
+
+```sh
+bao secrets enable transit
+bao write -f transit/keys/steerhouse deletion_allowed=false            # never exportable
+# Steerhouse's policy: it may unwrap and rewrap, never wrap
+bao policy write steerhouse-key - <<'POLICY'
+path "transit/decrypt/steerhouse" { capabilities = ["update"] }
+path "transit/rewrap/steerhouse"  { capabilities = ["update"] }
+POLICY
+# you wrap the key once, with your own token (BAO_TOKEN needs transit/encrypt/steerhouse):
+printf '%s' "$CREDENTIAL_ENCRYPTION_KEY" | python -m app.cli wrap-key   # prints vault:v1:...
+```
+
+Add the policy to Steerhouse's role, set `CREDENTIAL_ENCRYPTION_KEY_WRAPPED=vault:v1:...` **instead of**
+`CREDENTIAL_ENCRYPTION_KEY` (exactly one of the two must be set; in the production compose, add it to the
+backend's `environment:` and empty the `secrets/credential_encryption_key` file), and restart.
+`SECRETS_STORE_TRANSIT_MOUNT` and `SECRETS_STORE_TRANSIT_KEY` name the engine and key (`transit`, `steerhouse`).
+Steerhouse asks the store to unwrap the key at start-up and holds it in memory only; nothing is written to disk.
+**Keep a copy of the plaintext key in your password manager**: deleting the Transit key, or losing the store,
+makes every stored secret unrecoverable.
+
+If the store is down or sealed, Steerhouse still starts and serves what does not need the key. Anything that does
+(creating or reading a stored credential, a run that uses one, signing in with a second factor) waits for it:
+API calls answer `503 Retry-After: 10`, runs wait like they do for any store outage, and Steerhouse asks again
+every few seconds and on every probe. The **Workers** page (`GET /api/secret-store/status`) shows
+`key_locked` and why. Signing in with just a password does not need it.
+
+To rotate the Transit key, run `bao write -f transit/keys/steerhouse/rotate`, then `python -m app.cli rewrap-key`
+(with a `BAO_TOKEN` that may use `transit/rewrap/steerhouse`) and put the printed value in
+`CREDENTIAL_ENCRYPTION_KEY_WRAPPED`; the old value keeps working until you retire the old key version
+(`min_decryption_version`). To rotate the Fernet key itself, wrap the list `new,old`, run
+`reencrypt-secrets` as in [docs/upgrading.md](docs/upgrading.md#changing-the-encryption-key), then wrap the new
+key alone.
+
 **Moving secrets into the store (opt-in).** With `SECRETS_STORE_ALLOW_MOVE=true`, a key, vault password or set of
 environment variables stored in Steerhouse gets **Move to OpenBao**: Steerhouse writes it to a new path in the
 project's subtree, reads it back, and only then deletes its own encrypted copy and keeps a reference. It never

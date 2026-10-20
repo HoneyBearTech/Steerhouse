@@ -10,8 +10,7 @@ from cryptography.fernet import Fernet, InvalidToken
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.config import get_settings
-from app.crypto import fernet
+from app.crypto import encryption_keys, fernet
 from app.models import Credential, GitSource, NotificationChannel, User, VaultPassword
 
 # Every column holding a Fernet token (tests check no LargeBinary column is missing here).
@@ -38,7 +37,7 @@ def reencrypt_all(db: Session) -> RotationResult:
     """Rewrites every encrypted value under the current key, in the caller's transaction (rows
     locked as they are read). RotationFailed, naming the row, when no key can decrypt one."""
     keys = fernet()
-    current = Fernet(get_settings().credential_encryption_keys[0])
+    current = Fernet(encryption_keys()[0])
     result = RotationResult()
     for model, columns in ENCRYPTED_COLUMNS:
         for row in db.scalars(select(model).order_by(model.id).with_for_update()):

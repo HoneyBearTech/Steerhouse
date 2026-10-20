@@ -99,7 +99,8 @@ exposed directly to the public internet. The rest of this page assumes that depl
 - **Secret scrubbing is best effort.** Transformed or unknown secrets can appear in run output; `no_log:
   true` and Ansible Vault remain the primary controls.
 - **Holders of the deployment's keys.** Anyone holding `CREDENTIAL_ENCRYPTION_KEY` can decrypt every stored
-  secret, and anyone holding `WORKER_TOKEN` can claim runs and receive their secrets. Anyone with access to
+  secret (with the key wrapped by the secret store's Transit engine, `CREDENTIAL_ENCRYPTION_KEY_WRAPPED`, they
+  need the store's approval too; the unwrapped key still sits in the API process's memory), and anyone holding `WORKER_TOKEN` can claim runs and receive their secrets. Anyone with access to
   the host, the Docker daemon or the database is outside Steerhouse's protection.
 - **The network around it.** Steerhouse does not terminate TLS itself; the reverse proxy must. Exposing it to
   the internet, or skipping `COOKIE_SECURE=true` behind HTTPS, is unsupported.
