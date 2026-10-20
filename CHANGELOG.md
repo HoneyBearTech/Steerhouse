@@ -24,6 +24,11 @@ steps when upgrading; those are listed under "Upgrading" and in [docs/upgrading.
   `allowed_email_domains` that narrows `SSO_ALLOWED_EMAIL_DOMAINS`. An account still links to one provider.
   The provider with the slug `oidc` keeps the original URLs and cookie. `GET /api/auth/providers` also lists
   `oidc_providers`; the audit log names the provider (`detail.provider`).
+- **Diagram** view of an inventory's groups (next to **Tree** on the group graph page): a pan-and-zoom
+  node-link diagram laid out left to right, one box per group with a line from each parent, folding and
+  unfolding of the groups below one, the line to the picked group highlighted, and up to 25 of a group's hosts
+  on demand. It is loaded only when opened (React Flow and dagre, MIT) and the tree stays the accessible way
+  in; `view=diagram` is in the page's address.
 - Secret store login with a JWT: `SECRETS_STORE_AUTH=jwt` or `kubernetes` with `SECRETS_STORE_ROLE` and a
   JWT file (`SECRETS_STORE_JWT_FILE`, by default the pod's service account token for `kubernetes`;
   `SECRETS_STORE_JWT_MOUNT` for a non-default mount). The file is read at every login, and Steerhouse logs in

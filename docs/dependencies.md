@@ -81,6 +81,13 @@ Steerhouse's own code is MIT. Dependencies must use one of these licenses (SPDX 
   Ansible, and the backend image ships them under their own licenses and runs the tools as separate
   processes.
 
+The frontend's inventory diagram uses `@xyflow/react` (React Flow, MIT; with `@xyflow/system`, `classcat`,
+`zustand`, and the `d3-*` modules ISC or BSD-3-Clause) and `@dagrejs/dagre` (MIT, with `@dagrejs/graphlib`). They
+were checked before they were added: every package in the added tree has an allowed license, none has an
+install script, and the React Flow code makes no network calls (the built app's content security policy would
+block them anyway). The "React Flow" attribution link in the diagram's corner is kept. `elkjs` (EPL-2.0) is
+not allowed. Both are loaded in a separate chunk, only when the diagram is opened.
+
 Any other license, a missing license, or a new GPL dependency other than those is a violation: the
 dependency review check fails, and the dependency isn't added until the maintainer has decided, in the
 pull request, to replace it or to extend this list (with the reason).

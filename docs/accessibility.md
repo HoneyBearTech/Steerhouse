@@ -47,6 +47,10 @@ bugs: please report them in [GitHub Issues](https://github.com/HoneyBearTech/Ste
 - **Dark theme only.** The palette is designed and checked for the dark theme; there is no light or
   high-contrast theme yet.
 - **English only.** The UI isn't translated, and its text isn't yet extracted for translation.
+- **The group diagram is visual.** The inventory's **Diagram** view (React Flow) can be used with the keyboard
+  (Tab to a box's buttons, Enter to pick it or to open and close it), and zoomed with its buttons, but it does
+  not announce how boxes connect, and arrow keys do not move between boxes. The **Tree** beside it has the same
+  groups and is the accessible way to explore them. It respects the reduced-motion setting.
 - **No screen-reader walk-through yet.** The checks above are automated plus a keyboard pass; nobody has
   yet tested complete tasks with a screen reader such as NVDA, JAWS or VoiceOver. Reports from people who
   do are very welcome.

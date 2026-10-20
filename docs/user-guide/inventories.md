@@ -115,6 +115,15 @@ add (see below), and which hosts each one holds. It shows names and counts only,
 - The tree works with the keyboard: Tab into it, then use the arrow keys to move, open (→) and close (←),
   Home and End to jump, and Enter to pick a group. The page's address includes the picked group, so you
   can link to it.
+- **Diagram** (next to **Tree** above the groups) draws the same groups as boxes joined by lines, from the top
+  groups on the left to the groups below them on the right. Drag to move around, use the **+**, **−** and fit
+  buttons or ctrl + scroll to zoom (plain scrolling still scrolls the page). Click a box to pick that group,
+  the arrow in it to show or hide the groups below it, and **Show hosts of …** to hang up to 25 of its hosts
+  under it (the same hosts the list shows, including those of the groups below). A group under several parents
+  is drawn once, with a line from each. An inventory with more than 60 groups starts with only the top groups
+  and one level opened. The line from the top to the picked group is drawn in the accent colour. The page's
+  address includes `view=diagram`, so you can link to it. The diagram is for looking: use the tree to work
+  with the keyboard or a screen reader.
 
 
 Project admins can add **dynamic sources** to an inventory: the config of an Ansible inventory plugin,

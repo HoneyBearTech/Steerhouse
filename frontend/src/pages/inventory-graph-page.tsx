@@ -7,8 +7,12 @@ import { HostList } from "@/components/host-list";
 import { OriginBadge } from "@/components/origin-badge";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { api, ApiError, type InventoryGraph } from "@/lib/api";
 import { GROUP_BOTH_TITLE, indexGroups } from "@/lib/group-graph";
+
+// React Flow, dagre and their styles load only when the diagram is asked for.
+const InventoryDiagram = React.lazy(() => import("@/components/inventory-diagram"));
 
 function plural(count: number, one: string, many = `${one}s`) {
   return `${count} ${count === 1 ? one : many}`;
@@ -20,6 +24,7 @@ export function InventoryGraphPage() {
   const inventoryId = Number(params.id);
   const [searchParams, setSearchParams] = useSearchParams();
   const selected = searchParams.get("group");
+  const diagram = searchParams.get("view") === "diagram";
   const [graph, setGraph] = React.useState<InventoryGraph | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const details = React.useRef<HTMLDivElement>(null);
@@ -38,8 +43,24 @@ export function InventoryGraphPage() {
 
   const index = React.useMemo(() => (graph ? indexGroups(graph) : null), [graph]);
 
+  function setView(next: "tree" | "diagram") {
+    setSearchParams(
+      (current) => {
+        const query = new URLSearchParams(current);
+        if (next === "diagram") query.set("view", "diagram");
+        else query.delete("view");
+        return query;
+      },
+      { replace: true },
+    );
+  }
+
   function select(name: string) {
-    setSearchParams({ group: name });
+    setSearchParams((current) => {
+      const query = new URLSearchParams(current);
+      query.set("group", name);
+      return query;
+    });
     // Below the two-column layout the details sit under the tree: bring them into view.
     if (window.matchMedia?.("(max-width: 1023px)").matches) {
       details.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -65,6 +86,38 @@ export function InventoryGraphPage() {
           </>
         }
       />
+
+      <fieldset className="m-0 flex min-w-0 flex-wrap items-center gap-2 border-0 p-0">
+        <legend className="sr-only">View</legend>
+        <span aria-hidden="true" className="text-sm text-muted-foreground">
+          View
+        </span>
+        <Button type="button" size="sm" variant={diagram ? "outline" : "secondary"} aria-pressed={!diagram} onClick={() => setView("tree")}>
+          Tree
+        </Button>
+        <Button type="button" size="sm" variant={diagram ? "secondary" : "outline"} aria-pressed={diagram} onClick={() => setView("diagram")}>
+          Diagram
+        </Button>
+      </fieldset>
+
+      {diagram && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Diagram</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <React.Suspense fallback={<p className="text-sm text-muted-foreground">Loading diagram…</p>}>
+              <InventoryDiagram
+                graph={graph}
+                index={index}
+                inventoryId={inventoryId}
+                selected={selected}
+                onSelect={select}
+              />
+            </React.Suspense>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start">
         <Card>

@@ -123,7 +123,9 @@ for (const [url] of PAGES) {
         await open(page, url);
         const sideways = await page.evaluate(() => {
           const root = document.documentElement;
+          // (The diagram's canvas clips what lies beyond its own box: only the box itself counts.)
           const out = [...document.querySelectorAll("body *")]
+            .filter((el) => !el.parentElement?.closest("[data-diagram]"))
             .filter((el) => el.getBoundingClientRect().right > root.clientWidth + 1)
             .map((el) => `${el.tagName.toLowerCase()} "${(el.textContent ?? "").trim().slice(0, 40)}"`);
           return { overflow: root.scrollWidth - root.clientWidth, out: out.slice(0, 5) };
@@ -179,3 +181,37 @@ declare global {
     axe: typeof import("axe-core");
   }
 }
+
+test.describe("the group diagram", () => {
+  const URL = "/inventories/1/graph?view=diagram";
+
+  test("draws the groups, and a group is picked with the keyboard", async ({ page }) => {
+    await fakeApi(page, LONG_ROUTES);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await open(page, URL);
+    const nodes = page.locator("[data-diagram] .react-flow__node");
+    await expect(nodes.first()).toBeVisible();
+    expect(await nodes.count()).toBeGreaterThanOrEqual(3); // the fixture's groups, laid out by dagre
+    const xs = await nodes.evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().x)));
+    expect(new Set(xs).size).toBeGreaterThan(1); // more than one level, left to right
+
+    const pick = page.locator("[data-diagram]").getByRole("button", { name: new RegExp(`${LONG}-databases`) }).first();
+    await pick.focus();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/group=/);
+    await expect(page.getByRole("heading", { level: 2, name: `${LONG}-databases` })).toBeVisible();
+    await expect(page).toHaveURL(/view=diagram/);
+  });
+
+  for (const width of [375, 1280]) {
+    test(`stays inside its box at ${width} px and keeps the page from scrolling sideways`, async ({ page }) => {
+      await fakeApi(page, LONG_ROUTES);
+      await page.setViewportSize({ width, height: 800 });
+      await open(page, URL);
+      await expect(page.locator("[data-diagram] .react-flow__node").first()).toBeVisible();
+      const box = await page.locator("[data-diagram]").boundingBox();
+      expect(box && box.x >= 0 && box.x + box.width <= width + 1).toBe(true);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
+    });
+  }
+});

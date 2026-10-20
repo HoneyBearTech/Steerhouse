@@ -117,6 +117,7 @@ export const PAGES: [string, string | RegExp][] = [
   ["/inventories", "Inventories"],
   ["/inventories/1", "lab"],
   ["/inventories/1/graph", "Group graph"],
+  ["/inventories/1/graph?view=diagram&group=web", "Group graph"],
   ["/credentials", "Credentials"],
   ["/vault", "Vault"],
   ["/galaxy", "Galaxy"],

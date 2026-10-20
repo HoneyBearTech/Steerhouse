@@ -1,10 +1,15 @@
 import { waitFor } from "@testing-library/react";
 import axe from "axe-core";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { adminUser, FQCN_FINDING, lintJob } from "./fixtures";
 import { PAGE_ROUTES as ROUTES, PAGES } from "./pages";
 import { renderApp } from "./render";
+
+// jsdom can't lay out React Flow: the diagram is checked in a real browser (e2e/layout.spec.ts).
+vi.mock("@/components/inventory-diagram", () => ({
+  default: () => <section aria-label="Group diagram">The diagram is drawn in a browser.</section>,
+}));
 
 async function violations(container: HTMLElement) {
   const result = await axe.run(container, {
