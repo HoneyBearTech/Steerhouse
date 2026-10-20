@@ -21,13 +21,13 @@ The images are `ghcr.io/honeybeartech/steerhouse-backend` (the API and the worke
 ## 1. Get the deployment files
 
 Download `compose.yaml` and `.env.example` from the [`deploy/` folder](../deploy) of the release you install
-(for v0.6.0: `https://raw.githubusercontent.com/HoneyBearTech/Steerhouse/v0.6.0/deploy/compose.yaml`), into a
+(for v0.7.0: `https://raw.githubusercontent.com/HoneyBearTech/Steerhouse/v0.7.0/deploy/compose.yaml`), into a
 directory of their own, for example `/opt/steerhouse`:
 
 ```sh
 sudo mkdir -p /opt/steerhouse && cd /opt/steerhouse
-sudo curl -fsSLO https://raw.githubusercontent.com/HoneyBearTech/Steerhouse/v0.6.0/deploy/compose.yaml
-sudo curl -fsSL -o .env https://raw.githubusercontent.com/HoneyBearTech/Steerhouse/v0.6.0/deploy/.env.example
+sudo curl -fsSLO https://raw.githubusercontent.com/HoneyBearTech/Steerhouse/v0.7.0/deploy/compose.yaml
+sudo curl -fsSL -o .env https://raw.githubusercontent.com/HoneyBearTech/Steerhouse/v0.7.0/deploy/.env.example
 ```
 
 ## 2. Create the secrets
@@ -143,7 +143,7 @@ Open `https://steerhouse.example.com`, sign in as `admin` with the password you 
 cd /opt/steerhouse
 sudo docker compose down        # stops and removes the containers; data stays in the volumes
 sudo docker compose down -v     # also deletes the database and run history: this can't be undone
-sudo docker image rm ghcr.io/honeybeartech/steerhouse-backend:0.6.0 ghcr.io/honeybeartech/steerhouse-frontend:0.6.0
+sudo docker image rm ghcr.io/honeybeartech/steerhouse-backend:0.7.0 ghcr.io/honeybeartech/steerhouse-frontend:0.7.0
 ```
 
 Then delete `/opt/steerhouse`, including `secrets/` (or keep `credential_encryption_key` with your backups

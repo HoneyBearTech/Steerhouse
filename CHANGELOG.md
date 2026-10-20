@@ -7,6 +7,12 @@ steps when upgrading; those are listed under "Upgrading" and in [docs/upgrading.
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-20
+
+The secret store reaches more of Steerhouse: git tokens can live in it, existing secrets can move into it, runs
+record the secret versions they read and wait out a store outage. GitHub sign-in can be limited to
+organisations and teams, and teams can grant project roles.
+
 ### Upgrading
 
 - The API applies database migrations 0033, 0034, 0035 and 0036 when it starts.
@@ -529,7 +535,8 @@ come with SBOM and provenance attestations; see [docs/verifying-releases.md](doc
   need the usual pull-and-restart: database migrations run on start-up. An installation still on the
   old SQLite database must run the one-time import first (see [docs/upgrading.md](docs/upgrading.md)).
 
-[Unreleased]: https://github.com/HoneyBearTech/Steerhouse/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/HoneyBearTech/Steerhouse/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/HoneyBearTech/Steerhouse/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/HoneyBearTech/Steerhouse/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/HoneyBearTech/Steerhouse/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/HoneyBearTech/Steerhouse/compare/v0.3.0...v0.4.0

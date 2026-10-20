@@ -25,8 +25,10 @@ phone-friendly layout checked in a real browser on every pull request, and secur
 key. **v0.5.0** (October 2026) fixed the rest of that review's findings and made the run output viewer fast
 on long runs. **v0.6.0** (October 2026) added SSH host key checking, runs limited to their inventory's
 hosts, passkeys, short-lived SSH certificates, run artifacts and environment credentials, and dynamic
-inventory sources with their own schedules, from git files and scripts. The most recent release is the
-supported version.
+inventory sources with their own schedules, from git files and scripts. **v0.7.0** (October 2026) added
+reading more secrets from the secret store (git tokens, moving existing secrets in, queueing runs while it
+is down) and limiting GitHub sign-in to organisations and teams, with teams mapped to project roles. The
+most recent release is the supported version.
 
 ## Over the following year
 
@@ -43,9 +45,8 @@ supported version.
 
 **Security and operations**
 - Running the worker's firewall updates in a small helper of their own, so the worker can drop `NET_ADMIN`.
-- Short-lived SSH certificates from the secret store, and more of the secret store's features.
-- Single sign-on checked against more real providers, group-to-role mapping, and passkeys (WebAuthn) as a
-  second factor.
+- More of the secret store's features (Transit encryption, JWT and Kubernetes login).
+- Single sign-on checked against more real providers, and group-to-role mapping for OpenID Connect.
 
 **Integrations**
 - More dynamic-inventory plugins out of the box, inventory files from git, and more notification services
