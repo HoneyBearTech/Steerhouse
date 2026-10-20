@@ -314,7 +314,11 @@ def test_state_is_enforced(gh) -> None:
     # A tampered cookie.
     browser = TestClient(app)
     code, state = begin(browser)
-    browser.cookies.set("steerhouse_gh", browser.cookies["steerhouse_gh"][:-2] + "xx", path="/")
+    cookie = browser.cookies["steerhouse_gh"]
+    # The signature's last character carries only 4 bits, so replacing it can leave the decoded
+    # signature unchanged (about 1 cookie in 1100 ended in "xw"); change the one before it.
+    flipped = "A" if cookie[-2] != "A" else "B"
+    browser.cookies.set("steerhouse_gh", cookie[:-2] + flipped + cookie[-1], path="/")
     assert _refused(
         browser.get(CALLBACK, params={"code": code, "state": state}, follow_redirects=False),
         "failed",
