@@ -15,8 +15,10 @@ The store's SSH secrets engine also signs the per-run keys of "SSH certificate" 
 (app.ssh_certificates), with the role <path prefix>-<project id>-<role> on a mount listed in
 SECRETS_STORE_SSH_MOUNTS, through the same tokens.
 
-Steerhouse logs in with a token from a file (an Agent can keep it fresh) or AppRole (secret id
-from a file); tokens and values never reach logs, errors or the database. One job's reads
+Steerhouse logs in with a token from a file (an Agent can keep it fresh), AppRole (secret id
+from a file), or a JWT from a file (JWT/OIDC or Kubernetes auth: the JWT is read at every
+login, since a service account token is rotated); tokens, JWTs and values never reach logs,
+errors or the database. One job's reads
 share a deadline (SECRETS_STORE_TIMEOUT_SECONDS, at most 10 s): the worker gives up on a job
 after 15 s.
 """
@@ -308,12 +310,33 @@ class _Client:
             raise SecretStoreError(
                 "auth_failed", "the AppRole secret id file can't be read"
             ) from exc
-        response = self._request(
-            "POST",
+        return self._login(
             _api_path("auth", settings.secrets_store_approle_mount, "login"),
+            {"role_id": settings.secrets_store_role_id, "secret_id": secret_id},
             deadline,
-            json={"role_id": settings.secrets_store_role_id, "secret_id": secret_id},
         )
+
+    def _jwt_login(self, deadline: float) -> str:
+        """JWT/OIDC and Kubernetes auth share one request: the role and a JWT. The file is
+        read at every login, since a projected service account token is rotated."""
+        settings = get_settings()
+        try:
+            with open(settings.secrets_store_jwt_path) as handle:
+                jwt = handle.read().strip()
+        except OSError as exc:
+            raise SecretStoreError(
+                "auth_failed", "the secret store JWT file can't be read"
+            ) from exc
+        if not jwt:
+            raise SecretStoreError("auth_failed", "the secret store JWT file is empty")
+        return self._login(
+            _api_path("auth", settings.secrets_store_login_mount, "login"),
+            {"role": settings.secrets_store_role, "jwt": jwt},
+            deadline,
+        )
+
+    def _login(self, api_path: str, body: dict, deadline: float) -> str:
+        response = self._request("POST", api_path, deadline, json=body)
         if response.status_code in (400, 403):
             raise SecretStoreError("auth_failed")
         if response.status_code != 200:
@@ -334,7 +357,9 @@ class _Client:
                 return self._token_from_file()
             if self._token is not None and time.monotonic() < self._token.refresh_at:
                 return self._token.value
-            return self._approle_login(deadline)
+            if get_settings().secrets_store_auth == "approle":
+                return self._approle_login(deadline)
+            return self._jwt_login(deadline)
 
     def _child_token(self, parent: str, project_id: int, deadline: float) -> str:
         policy = get_settings().secrets_store_project_policy.replace(
@@ -391,7 +416,7 @@ class _Client:
         AppRole, a denial means a revoked or expired token: log in once more."""
         settings = get_settings()
         for attempt in range(2):
-            relogin = attempt == 0 and settings.secrets_store_auth == "approle"
+            relogin = attempt == 0 and settings.secrets_store_relogin
             token = self.token(deadline)
             if settings.secrets_store_project_policy:
                 try:
@@ -539,7 +564,7 @@ class _Client:
         lookup = self._request(
             "GET", _api_path("auth", "token", "lookup-self"), deadline, token=token
         )
-        if lookup.status_code == 403 and get_settings().secrets_store_auth == "approle":
+        if lookup.status_code == 403 and get_settings().secrets_store_relogin:
             self.forget_token()
             token = self.token(deadline)
             lookup = self._request(

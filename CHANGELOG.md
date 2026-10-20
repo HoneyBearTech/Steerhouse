@@ -18,6 +18,11 @@ steps when upgrading; those are listed under "Upgrading" and in [docs/upgrading.
 - `OIDC_PROVIDER_LOGOUT` (off by default): **Log out** on a session that came from OpenID Connect also ends
   the user's session at the provider (RP-initiated logout via its `end_session_endpoint`; register
   `<PUBLIC_URL>/login` as a post-logout redirect URI). `POST /api/auth/logout` now answers `{ok, redirect}`.
+- Secret store login with a JWT: `SECRETS_STORE_AUTH=jwt` or `kubernetes` with `SECRETS_STORE_ROLE` and a
+  JWT file (`SECRETS_STORE_JWT_FILE`, by default the pod's service account token for `kubernetes`;
+  `SECRETS_STORE_JWT_MOUNT` for a non-default mount). The file is read at every login, and Steerhouse logs in
+  again at two thirds of the token's life and once after a denial, like AppRole. The workers refuse to start
+  with the new variables set, like the other store settings.
 - README: trusting a private CA for an OpenID Connect provider (`SSL_CERT_FILE`).
 
 ## [0.7.0] - 2026-10-20

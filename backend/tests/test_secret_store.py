@@ -68,6 +68,22 @@ def store(monkeypatch, tmp_path):
                     "auth": {"client_token": f"approle-{state['logins']}", "lease_duration": 600}
                 },
             )
+        for method in ("jwt", "kubernetes", "corp-jwt"):
+            if path == f"/v1/auth/{method}/login":
+                body = json.loads(request.content)
+                state.setdefault("jwt_logins", []).append((method, body))
+                if body.get("role") != "steerhouse" or not body.get("jwt", "").startswith("jwt-ok"):
+                    return httpx.Response(403, json={"errors": ["permission denied"]})
+                state["logins"] = state.get("logins", 0) + 1
+                return httpx.Response(
+                    200,
+                    json={
+                        "auth": {
+                            "client_token": f"{method}-{state['logins']}",
+                            "lease_duration": 600,
+                        }
+                    },
+                )
         if path == "/v1/auth/token/create":
             body = json.loads(request.content)
             state["child_request"] = body
@@ -256,6 +272,80 @@ def test_a_wrong_secret_id_is_an_auth_failure(store, monkeypatch) -> None:
     assert error.value.kind == "auth_failed"
 
 
+def _jwt(monkeypatch, store, method: str = "jwt", jwt: str = "jwt-ok-1", **more: str) -> None:
+    path = store["tmp"] / "jwt"
+    path.write_text(jwt + "\n")
+    monkeypatch.setenv("SECRETS_STORE_AUTH", method)
+    monkeypatch.setenv("SECRETS_STORE_ROLE", more.pop("role", "steerhouse"))
+    monkeypatch.setenv("SECRETS_STORE_JWT_FILE", str(path))
+    for name, value in more.items():
+        monkeypatch.setenv(name, value)
+    get_settings.cache_clear()
+    secret_store.reset()
+
+
+@pytest.mark.parametrize("method", ["jwt", "kubernetes"])
+def test_jwt_login_sends_the_role_and_the_jwt_to_the_methods_mount(
+    store, monkeypatch, method
+) -> None:
+    _jwt(monkeypatch, store, method)
+    assert secret_store.read_secret(7, "web/ssh", "private_key") == VALUE
+    assert store["jwt_logins"] == [(method, {"role": "steerhouse", "jwt": "jwt-ok-1"})]
+    assert store["requests"][-1].headers["X-Vault-Token"] == f"{method}-1"
+    secret_store.read_secret(7, "web/ssh", "private_key")
+    assert store["logins"] == 1  # the token is kept until two thirds of its life are gone
+
+
+def test_jwt_login_reads_the_file_again_at_every_login(store, monkeypatch) -> None:
+    """A projected service account token is rotated: the next login sends the new one."""
+    _jwt(monkeypatch, store)
+    secret_store.read_secret(7, "web/ssh", "private_key")
+    (store["tmp"] / "jwt").write_text("jwt-ok-2")
+    secret_store._client._token.refresh_at = time.monotonic() - 1
+    secret_store.read_secret(7, "web/ssh", "private_key")
+    assert [body["jwt"] for _, body in store["jwt_logins"]] == ["jwt-ok-1", "jwt-ok-2"]
+
+
+def test_jwt_login_uses_a_custom_mount(store, monkeypatch) -> None:
+    _jwt(monkeypatch, store, SECRETS_STORE_JWT_MOUNT="corp-jwt")
+    secret_store.read_secret(7, "web/ssh", "private_key")
+    assert store["jwt_logins"][0][0] == "corp-jwt"
+
+
+def test_jwt_logs_in_again_once_after_a_403(store, monkeypatch) -> None:
+    _jwt(monkeypatch, store, "kubernetes")
+    secret_store.read_secret(7, "web/ssh", "private_key")
+    store["status"]["/v1/secret/data/steerhouse/7/web/ssh"] = (
+        403,
+        {"errors": ["permission denied"]},
+    )
+    with pytest.raises(SecretStoreError, match="permission denied"):
+        secret_store.read_secret(7, "web/ssh", "private_key")
+    assert store["logins"] == 2
+
+
+def test_jwt_login_with_a_refused_jwt_or_role_is_an_auth_failure(store, monkeypatch) -> None:
+    for kwargs in ({"jwt": "jwt-bad"}, {"role": "someone-else"}):
+        _jwt(monkeypatch, store, **kwargs)
+        with pytest.raises(SecretStoreError) as error:
+            secret_store.read_secret(7, "web/ssh", "private_key")
+        assert error.value.kind == "auth_failed"
+
+
+def test_an_empty_or_missing_jwt_file_is_an_auth_failure_that_names_no_secret(
+    store, monkeypatch
+) -> None:
+    _jwt(monkeypatch, store, jwt="")
+    with pytest.raises(SecretStoreError, match="JWT file is empty") as error:
+        secret_store.read_secret(7, "web/ssh", "private_key")
+    assert error.value.kind == "auth_failed"
+    (store["tmp"] / "jwt").unlink()
+    with pytest.raises(SecretStoreError, match="can't be read") as error:
+        secret_store.read_secret(7, "web/ssh", "private_key")
+    assert error.value.kind == "auth_failed"
+    assert "jwt-ok" not in str(error.value)
+
+
 def test_the_project_policy_reads_through_a_one_use_child_token(store, monkeypatch) -> None:
     monkeypatch.setenv("SECRETS_STORE_PROJECT_POLICY", "steerhouse-project-{project_id}")
     get_settings.cache_clear()
@@ -362,6 +452,18 @@ def test_the_store_settings_are_checked(tmp_path, monkeypatch) -> None:
         ({"secrets_store_kv_mount": "a/b"}, "one path segment"),
         ({"secrets_store_path_prefix": ".."}, "one path segment"),
         ({"secrets_store_auth": "approle"}, "ROLE_ID"),
+        ({"secrets_store_auth": "jwt"}, "SECRETS_STORE_ROLE"),
+        ({"secrets_store_auth": "jwt", "secrets_store_role": "r"}, "SECRETS_STORE_JWT_FILE"),
+        ({"secrets_store_auth": "kubernetes", "secrets_store_role": "a/b"}, "SECRETS_STORE_ROLE"),
+        (
+            {
+                "secrets_store_auth": "jwt",
+                "secrets_store_role": "r",
+                "secrets_store_jwt_file": "token",
+                "secrets_store_jwt_mount": "a/b",
+            },
+            "JWT_MOUNT",
+        ),
         ({"secrets_store_project_policy": "fixed-name"}, "{project_id}"),
         ({"secrets_store_project_policy": "p-{project_id}-{x}"}, "{project_id}"),
         ({"secrets_store_timeout_seconds": 15}, "less than or equal"),

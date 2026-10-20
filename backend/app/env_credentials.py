@@ -32,6 +32,7 @@ _DENIED = frozenset(
         # Steerhouse's own secrets (FORBIDDEN_ENV in app.worker.__main__)
         "CREDENTIAL_ENCRYPTION_KEY", "DATABASE_URL", "AUTH_SECRET_KEY",
         "SECRETS_STORE_TOKEN_FILE", "SECRETS_STORE_SECRET_ID_FILE", "SECRETS_STORE_ROLE_ID",
+        "SECRETS_STORE_JWT_FILE", "SECRETS_STORE_ROLE",
         "VAULT_TOKEN", "BAO_TOKEN",
         # where a run's artifacts go (app.run_worker)
         "ARTIFACTS_DIR",

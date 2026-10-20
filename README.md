@@ -217,6 +217,24 @@ bao write -f -field=secret_id auth/approle/role/steerhouse/secret-id  # into SEC
 bao kv put secret/steerhouse/1/web/ssh private_key=@id_ed25519        # project 1's key
 ```
 
+**Logging in with a JWT or from Kubernetes.** Instead of AppRole, set `SECRETS_STORE_AUTH=kubernetes` (or `jwt`)
+and `SECRETS_STORE_ROLE` to the store's role name. Steerhouse sends the role and a JWT read from
+`SECRETS_STORE_JWT_FILE` (for `kubernetes` it defaults to the pod's service account token,
+`/var/run/secrets/kubernetes.io/serviceaccount/token`) to `auth/<mount>/login`, where the mount is the method's
+name unless `SECRETS_STORE_JWT_MOUNT` says otherwise. The file is read again at every login, so a rotated
+projected token is picked up; like AppRole, Steerhouse logs in again at two thirds of the token's life and once
+more after a denial. Give the role the same policies as the AppRole above:
+
+```sh
+bao auth enable kubernetes
+bao write auth/kubernetes/config kubernetes_host=https://kubernetes.default.svc
+bao write auth/kubernetes/role/steerhouse bound_service_account_names=steerhouse \
+    bound_service_account_namespaces=steerhouse token_policies=steerhouse token_ttl=20m
+```
+
+(For `jwt`, enable `auth/jwt`, configure `jwks_url` or `jwt_validation_pubkeys`, and create a role with
+`role_type=jwt`, `bound_audiences` and `user_claim`.)
+
 Steerhouse's identity can read every project's subtree, so Steerhouse itself keeps them apart. To have the store
 enforce it too, set `SECRETS_STORE_PROJECT_POLICY=steerhouse-project-{project_id}`, create one policy per project
 (`path "secret/data/steerhouse/<id>/*" { capabilities = ["read"] }`), add them all to the role's

@@ -102,6 +102,92 @@ def store(client, approle, monkeypatch, tmp_path):
     get_settings.cache_clear()
 
 
+JWT_MOUNT = "jwt-test"
+JWT_AUDIENCE = "steerhouse-test"
+
+
+@pytest.fixture(scope="module")
+def jwt_login():
+    """A real JWT auth mount that trusts one RSA key, and a role bound to an issuer, a subject
+    and an audience; yields a function that mints tokens for it."""
+    import time as _time
+
+    from joserfc import jwt
+    from joserfc.jwk import RSAKey
+
+    key = RSAKey.generate_key(2048)
+    with _admin() as bao:
+        bao.post("/v1/sys/auth/" + JWT_MOUNT, json={"type": "jwt"})  # 400 once it exists
+        policy = f'path "secret/data/{PREFIX}/*" {{ capabilities = ["read"] }}\n'
+        assert (
+            bao.put("/v1/sys/policies/acl/steerhouse-test-jwt", json={"policy": policy}).status_code
+            == 204
+        )
+        config = bao.post(
+            f"/v1/auth/{JWT_MOUNT}/config",
+            json={
+                "jwt_validation_pubkeys": key.as_pem(private=False).decode(),
+                "bound_issuer": "https://issuer.test",
+            },
+        )
+        assert config.status_code == 204, config.text
+        role = bao.post(
+            f"/v1/auth/{JWT_MOUNT}/role/steerhouse",
+            json={
+                "role_type": "jwt",
+                "bound_audiences": [JWT_AUDIENCE],
+                "bound_subject": "system:serviceaccount:steerhouse:api",
+                "user_claim": "sub",
+                "token_policies": ["steerhouse-test-jwt"],
+                "token_ttl": "10m",
+            },
+        )
+        assert role.status_code in (200, 204), role.text
+
+    def mint(*, aud: str = JWT_AUDIENCE, sub: str = "system:serviceaccount:steerhouse:api") -> str:
+        now = int(_time.time())
+        claims = {
+            "iss": "https://issuer.test",
+            "aud": aud,
+            "sub": sub,
+            "iat": now,
+            "exp": now + 300,
+        }
+        return jwt.encode({"alg": "RS256"}, claims, key)
+
+    return mint
+
+
+def test_a_real_login_with_a_jwt(client, jwt_login, monkeypatch, tmp_path) -> None:
+    """Real JWT auth validates the signature, issuer, subject and audience; a refused token is
+    an auth failure and the next login picks up the file's new content."""
+    put_secret(1, "web/ssh", {"private_key": "k-jwt"})
+    token_file = tmp_path / "jwt"
+    for name, value in {
+        "SECRETS_STORE_URL": ADDR,
+        "SECRETS_STORE_AUTH": "jwt",
+        "SECRETS_STORE_ROLE": "steerhouse",
+        "SECRETS_STORE_JWT_MOUNT": JWT_MOUNT,
+        "SECRETS_STORE_JWT_FILE": str(token_file),
+        "SECRETS_STORE_PATH_PREFIX": PREFIX,
+    }.items():
+        monkeypatch.setenv(name, value)
+    token_file.write_text(jwt_login(aud="someone-else"))
+    get_settings.cache_clear()
+    secret_store.reset()
+    with pytest.raises(SecretStoreError) as refused:
+        secret_store.read_secret(1, "web/ssh", "private_key")
+    assert refused.value.kind == "auth_failed"
+    token_file.write_text(jwt_login(sub="system:serviceaccount:other:api"))
+    with pytest.raises(SecretStoreError) as wrong_subject:
+        secret_store.read_secret(1, "web/ssh", "private_key")
+    assert wrong_subject.value.kind == "auth_failed"
+    token_file.write_text(jwt_login())  # the rotated token
+    assert secret_store.read_secret(1, "web/ssh", "private_key") == "k-jwt"
+    secret_store.reset()
+    get_settings.cache_clear()
+
+
 def test_a_real_read_through_approle(store) -> None:
     put_secret(1, "web/ssh", {"private_key": "k1", "other": "x"})
     value, version = secret_store.read_versioned(1, "web/ssh", "private_key")

@@ -258,11 +258,17 @@ class Settings(BaseSettings):
     # Agent) or AppRole (role id here, secret id in a file); both files are re-read as they
     # change. "Vault" here would collide with Ansible Vault, hence the SECRETS_STORE_ names.
     secrets_store_url: str = ""
-    secrets_store_auth: Literal["token", "approle"] = "token"
+    secrets_store_auth: Literal["token", "approle", "jwt", "kubernetes"] = "token"
     secrets_store_token_file: str = ""
     secrets_store_role_id: str = ""
     secrets_store_secret_id_file: str = ""
     secrets_store_approle_mount: str = "approle"
+    # jwt / kubernetes: log in with a JWT read from a file (re-read at every login: a
+    # Kubernetes service account token is projected and rotated) as SECRETS_STORE_ROLE.
+    # The file defaults to the pod's service account token; the mount to the method's name.
+    secrets_store_role: str = ""
+    secrets_store_jwt_file: str = ""
+    secrets_store_jwt_mount: str = ""
     secrets_store_namespace: str = ""
     secrets_store_ca_cert: str = ""
     secrets_store_kv_mount: str = "secret"
@@ -404,6 +410,26 @@ class Settings(BaseSettings):
         return self
 
     @property
+    def secrets_store_jwt_path(self) -> str:
+        """The JWT file for jwt/kubernetes login: a pod's service account token by default."""
+        if self.secrets_store_jwt_file:
+            return self.secrets_store_jwt_file
+        if self.secrets_store_auth == "kubernetes":
+            return "/var/run/secrets/kubernetes.io/serviceaccount/token"
+        return ""
+
+    @property
+    def secrets_store_login_mount(self) -> str:
+        """Where the store's jwt/kubernetes auth method is mounted (default: its own name)."""
+        return self.secrets_store_jwt_mount or self.secrets_store_auth
+
+    @property
+    def secrets_store_relogin(self) -> bool:
+        """The methods that log in for a token that expires (so a denial may mean 'log in
+        again'), as opposed to a token file kept fresh by someone else."""
+        return self.secrets_store_auth in ("approle", "jwt", "kubernetes")
+
+    @property
     def secrets_store_enabled(self) -> bool:
         return bool(self.secrets_store_url)
 
@@ -431,6 +457,10 @@ class Settings(BaseSettings):
                      "secrets_store_approle_mount"):  # fmt: skip
             if not segment.match(getattr(self, name)):
                 raise ValueError(f"{name.upper()} must be one path segment (letters, digits, ._-)")
+        if self.secrets_store_jwt_mount and not segment.match(self.secrets_store_jwt_mount):
+            raise ValueError(
+                "SECRETS_STORE_JWT_MOUNT must be one path segment (letters, digits, ._-)"
+            )
         mounts = self.secrets_store_ssh_mount_list
         if len(mounts) > 8 or not all(segment.match(mount) for mount in mounts):
             raise ValueError(
@@ -443,10 +473,18 @@ class Settings(BaseSettings):
             raise ValueError("SECRETS_STORE_NAMESPACE has invalid characters")
         if self.secrets_store_auth == "token":
             files = {"SECRETS_STORE_TOKEN_FILE": self.secrets_store_token_file}
-        else:
+        elif self.secrets_store_auth == "approle":
             if not self.secrets_store_role_id:
                 raise ValueError("SECRETS_STORE_AUTH=approle needs SECRETS_STORE_ROLE_ID")
             files = {"SECRETS_STORE_SECRET_ID_FILE": self.secrets_store_secret_id_file}
+        else:
+            method = self.secrets_store_auth
+            if not segment.match(self.secrets_store_role):
+                raise ValueError(
+                    f"SECRETS_STORE_AUTH={method} needs SECRETS_STORE_ROLE, the store's role name "
+                    "(letters, digits, ._-)"
+                )
+            files = {"SECRETS_STORE_JWT_FILE": self.secrets_store_jwt_path}
         if self.secrets_store_ca_cert:
             files["SECRETS_STORE_CA_CERT"] = self.secrets_store_ca_cert
         for name, path in files.items():
