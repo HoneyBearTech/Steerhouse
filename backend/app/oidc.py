@@ -267,8 +267,12 @@ def complete_login(
     email = claims.get("email")
     if not isinstance(email, str) or "@" not in email:
         raise SsoError("failed", "ID token has no email claim")
-    if claims.get("email_verified") is not True:
-        raise SsoError("not_linked", "provider did not verify the email", email=email)
+    if claims.get(provider.email_verified_claim) is not True:
+        raise SsoError(
+            "not_linked",
+            f"provider did not verify the email ({provider.email_verified_claim!r} is not true)",
+            email=email,
+        )
     groups = _token_groups(provider, claims) if provider.role_map else []
     user, newly_linked = resolve_user(
         db,

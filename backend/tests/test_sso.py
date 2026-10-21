@@ -228,6 +228,30 @@ def test_only_a_verified_email_counts(sso, verified) -> None:
     assert _refused(_sign_in(fake, email_verified=verified)[1], "not_linked")
 
 
+def test_a_named_claim_can_stand_in_for_email_verified(sso, monkeypatch) -> None:
+    """Entra sends no email_verified: its optional claim xms_edov (true only for an email whose
+    domain a tenant has verified) is named instead, and then only that claim counts."""
+    fake, admin = sso
+    _provision(admin, "alice", "alice@example.com")
+    monkeypatch.setenv("OIDC_EMAIL_VERIFIED_CLAIM", "xms_edov")
+    get_settings.cache_clear()
+    assert _ok(_sign_in(fake, email_verified=None, claims={"xms_edov": True})[1])
+    for claims in ({}, {"xms_edov": False}, {"xms_edov": "true"}, {"xms_edov": 1}):
+        assert _refused(_sign_in(fake, email_verified=None, claims=claims)[1], "not_linked")
+    # email_verified no longer vouches for anything: the provider's own word is the named claim.
+    assert _refused(_sign_in(fake, email_verified=True)[1], "not_linked")
+    reason = _audit(admin, "auth.sso")[0]["detail"]["reason"]
+    assert "xms_edov" in reason
+
+
+def test_the_claim_name_must_be_a_claim_name() -> None:
+    for claim in ["", "  ", "a" * 101, "a\nb"]:
+        with pytest.raises(ValueError, match="OIDC_EMAIL_VERIFIED_CLAIM"):
+            Settings(oidc_email_verified_claim=claim)
+    assert Settings(oidc_email_verified_claim=" xms_edov ").oidc_email_verified_claim == "xms_edov"
+    assert Settings().oidc_email_verified_claim == "email_verified"
+
+
 def test_a_missing_email_claim_is_refused(sso) -> None:
     fake, admin = sso
     _provision(admin, "alice", "alice@example.com")

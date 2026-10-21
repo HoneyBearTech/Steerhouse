@@ -130,6 +130,10 @@ class OidcProvider(BaseModel):
     groups_claim: str = "groups"
     # Log out of this provider too when someone logs out of Steerhouse (opt-in).
     provider_logout: bool = False
+    # The ID token claim that says the provider verified the email; it must be the JSON value
+    # true. Entra sends no email_verified: name xms_edov (the email's domain is verified in a
+    # tenant) there.
+    email_verified_claim: str = "email_verified"
     # Narrows SSO_ALLOWED_EMAIL_DOMAINS for this provider (never widens it): only these
     # domains' verified emails may sign in here. None: no extra limit.
     allowed_email_domains: list[str] | None = None
@@ -170,6 +174,14 @@ class OidcProvider(BaseModel):
         claim = v.strip()
         if not claim or len(claim) > 100 or not claim.isprintable():
             raise ValueError("OIDC_PROVIDERS: groups_claim must be the name of a claim")
+        return claim
+
+    @field_validator("email_verified_claim")
+    @classmethod
+    def _email_verified_claim(cls, v: str) -> str:
+        claim = v.strip()
+        if not claim or len(claim) > 100 or not claim.isprintable():
+            raise ValueError("OIDC_PROVIDERS: email_verified_claim must be the name of a claim")
         return claim
 
     @field_validator("allowed_email_domains")
@@ -244,6 +256,9 @@ class Settings(BaseSettings):
     # end_session_endpoint), which signs them out of the provider's other apps too.
     oidc_provider_logout: bool = False
     oidc_groups_claim: str = "groups"
+    # The ID token claim that says the provider verified the email (must be the JSON value
+    # true). Entra sends no email_verified: set xms_edov there.
+    oidc_email_verified_claim: str = "email_verified"
     # Several providers at once (JSON list of OidcProvider); replaces the single-provider OIDC_*
     # settings above, which stay as they are for one provider.
     oidc_providers: list[OidcProvider] = []
@@ -693,6 +708,7 @@ class Settings(BaseSettings):
                     role_map=self.oidc_role_map,
                     groups_claim=self.oidc_groups_claim,
                     provider_logout=self.oidc_provider_logout,
+                    email_verified_claim=self.oidc_email_verified_claim,
                     allowed_email_domains=None,
                 )
             ]
@@ -754,6 +770,16 @@ class Settings(BaseSettings):
         claim = v.strip()
         if not claim or len(claim) > 100 or not claim.isprintable():
             raise ValueError("OIDC_GROUPS_CLAIM must be the name of a claim in the ID token")
+        return claim
+
+    @field_validator("oidc_email_verified_claim")
+    @classmethod
+    def _check_oidc_email_verified_claim(cls, v: str) -> str:
+        claim = v.strip()
+        if not claim or len(claim) > 100 or not claim.isprintable():
+            raise ValueError(
+                "OIDC_EMAIL_VERIFIED_CLAIM must be the name of a claim in the ID token"
+            )
         return claim
 
     @property

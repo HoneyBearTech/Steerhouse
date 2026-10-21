@@ -626,7 +626,7 @@ OIDC_PROVIDERS=[{"slug": "keycloak", "issuer": "https://sso.example.com/realms/o
 Each provider gets its own button on the login page and its own redirect URI,
 `<PUBLIC_URL>/api/auth/oidc/<slug>/callback`, to register at the provider. A slug is 1 to 32 lowercase letters,
 digits or `-` (not `github`, `login` or `callback`); issuers and slugs must be unique, at most 8. Besides `scopes`,
-`role_map`, `groups_claim` and `provider_logout` (the settings above, per provider), `allowed_email_domains` limits
+`role_map`, `groups_claim`, `provider_logout` and `email_verified_claim` (the settings above, per provider), `allowed_email_domains` limits
 a provider to some email domains; it can only narrow `SSO_ALLOWED_EMAIL_DOMAINS`, never widen it. The provider
 with the slug `oidc` keeps the original single-provider URLs and cookie (`<PUBLIC_URL>/api/auth/oidc/callback`),
 so move your existing provider into the list with `"slug": "oidc"` and nothing needs re-registering. The client
@@ -638,6 +638,18 @@ only that provider signs them in (another one's `not_linked` error leaves the ac
 SSO** and audited as `oidc:<slug> group`. Mind what an email address proves: the first sign-in trusts each
 provider's `email_verified`, so only add providers whose verified emails you trust, and limit open ones (a social
 login, a Keycloak realm with self-registration) with `allowed_email_domains`.
+
+**Microsoft Entra.** Register a single-tenant app (platform *Web*, redirect URI
+`<PUBLIC_URL>/api/auth/oidc/<slug>/callback`), use the issuer `https://login.microsoftonline.com/<tenant id>/v2.0`,
+and put the secret's **Value** (not its ID) in `client_secret`. Under *Token configuration* add the optional
+claims **email** and **xms_edov** to the ID token. Entra sends no `email_verified`, and Steerhouse only links
+an account by an email the provider vouches for, so name the claim that does: `"email_verified_claim": "xms_edov"`
+(or `OIDC_EMAIL_VERIFIED_CLAIM=xms_edov`). `xms_edov` is `true` only when the email's domain is verified in
+a tenant, so it works for addresses on your own verified domain, not for a guest or personal address such as
+`@gmail.com`; such a sign-in is refused (`not_linked`, audit "`xms_edov` is not true"). The named claim must be
+the JSON value `true`: a string, a number or a missing claim never counts, and while it is set `email_verified`
+no longer counts. Use a single-tenant issuer: with the multi-tenant endpoints (`common`, `organizations`) anyone
+with a tenant could set an email of their own choosing.
 
 If the provider's certificate comes from a private CA (for example a self-hosted Keycloak), point the
 backend at a CA bundle with `SSL_CERT_FILE=/path/to/bundle.pem` (mount the file into the container).

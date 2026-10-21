@@ -9,6 +9,10 @@ steps when upgrading; those are listed under "Upgrading" and in [docs/upgrading.
 
 ### Added
 
+- `OIDC_EMAIL_VERIFIED_CLAIM` (and `email_verified_claim` per provider in `OIDC_PROVIDERS`): the ID token claim
+  that says the provider verified the email, `email_verified` by default. Microsoft Entra sends no
+  `email_verified`, so its sign-ins were refused as `not_linked`; name `xms_edov` there (see the README). The
+  claim must be the JSON value `true`, and the audit log names the claim when it isn't.
 - **By host** tab on a run: what each host did in each task (ok, changed, failed, ignored, skipped,
   unreachable) with the module's short message, tasks where hosts differ highlighted, refreshing while the run
   goes (`GET /api/runs/{id}/hosts`, from the stored output; API keys may read it like the run's log).

@@ -99,6 +99,33 @@ def _settings(providers, **more) -> Settings:
     return Settings(**BASE, oidc_providers=providers, **more)
 
 
+def test_each_provider_names_its_own_verified_email_claim(two, client: TestClient) -> None:
+    fake_a, fake_b = two
+    fake_a.configure([_providers()[0], {**_providers()[1], "email_verified_claim": "xms_edov"}])
+    admin = _admin(client)
+    _provision(admin, "alice", "alice@example.com")
+    _provision(admin, "bob", "bob@example.com")
+    # Provider B (named claim) accepts xms_edov and ignores email_verified; A is unchanged.
+    assert _ok(
+        _sign_in(
+            fake_b, "google", sub="b", email="bob@example.com", email_verified=None,
+            claims={"xms_edov": True},
+        )[1]
+    )  # fmt: skip
+    assert _refused(
+        _sign_in(fake_b, "google", sub="b", email="bob@example.com", email_verified=True)[1],
+        "not_linked",
+    )
+    assert _refused(
+        _sign_in(
+            fake_a, "keycloak", sub="a", email="alice@example.com", email_verified=None,
+            claims={"xms_edov": True},
+        )[1],
+        "not_linked",
+    )  # fmt: skip
+    assert _ok(_sign_in(fake_a, "keycloak", sub="a", email="alice@example.com")[1])
+
+
 def test_the_providers_are_validated_and_the_secret_stays_hidden() -> None:
     settings = _settings(_providers(allowed_email_domains=[" Corp.Example ", "corp.example"]))
     assert [p.slug for p in settings.oidc_provider_list] == ["keycloak", "google"]
