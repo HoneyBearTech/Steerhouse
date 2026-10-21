@@ -34,10 +34,6 @@ most recent release is the supported version.
 
 ## Over the following year
 
-**Running playbooks**
-- Ad-hoc commands (one module against an inventory or group), run and audited like playbook runs.
-- Inventory sources from git: inventory files, and scripts in a synced repository.
-
 **Authoring**
 - More from the editor: completion of module names and options, and ansible-lint's fixes offered as edits.
 
@@ -49,8 +45,7 @@ most recent release is the supported version.
 - Single sign-on checked against more real providers.
 
 **Integrations**
-- More dynamic-inventory plugins out of the box, inventory files from git, and more notification services
-  where people ask for them.
+- More dynamic-inventory plugins out of the box, and more notification services where people ask for them.
 
 ## What Steerhouse will not do
 
