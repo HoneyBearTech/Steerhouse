@@ -7,6 +7,18 @@ steps when upgrading; those are listed under "Upgrading" and in [docs/upgrading.
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-21
+
+Single sign-on grows up: several OpenID Connect providers, project roles from OIDC groups, and logout at the
+provider. The secret store can log in with a JWT or Kubernetes service account and keep the credential
+encryption key wrapped by its Transit engine, and an inventory's groups can be drawn as a diagram.
+
+### Upgrading
+
+- There are no new database migrations (the latest is still 0036).
+- Nothing changes unless you set the new variables: `OIDC_ROLE_MAP`, `OIDC_PROVIDER_LOGOUT`, `OIDC_PROVIDERS`,
+  `SECRETS_STORE_AUTH=jwt|kubernetes`, `CREDENTIAL_ENCRYPTION_KEY_WRAPPED`.
+
 ### Added
 
 - Project memberships from OpenID Connect groups: `OIDC_ROLE_MAP` maps groups in the ID token (the claim
@@ -571,7 +583,8 @@ come with SBOM and provenance attestations; see [docs/verifying-releases.md](doc
   need the usual pull-and-restart: database migrations run on start-up. An installation still on the
   old SQLite database must run the one-time import first (see [docs/upgrading.md](docs/upgrading.md)).
 
-[Unreleased]: https://github.com/HoneyBearTech/Steerhouse/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/HoneyBearTech/Steerhouse/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/HoneyBearTech/Steerhouse/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/HoneyBearTech/Steerhouse/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/HoneyBearTech/Steerhouse/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/HoneyBearTech/Steerhouse/compare/v0.4.0...v0.5.0
