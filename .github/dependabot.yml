@@ -30,6 +30,14 @@ updates:
     schedule:
       interval: "weekly"
 
+  # The production compose file's pinned images (Postgres, and Prometheus and Grafana of the
+  # monitoring profile); a bump needs the maintainer's look like every image bump.
+  - package-ecosystem: "docker-compose"
+    directory: "/deploy"
+    assignees: ["HoneyBearTech"]
+    schedule:
+      interval: "weekly"
+
   - package-ecosystem: "github-actions"
     directory: "/"
     assignees: ["HoneyBearTech"]

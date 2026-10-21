@@ -269,6 +269,67 @@ jobs:
               --expect-data "Sign-ins by outcome and method" \
             || { docker logs smoke-grafana 2>&1 | tail -40; exit 1; }
 
+      - name: Smoke test the monitoring profile with the backend runtime image
+        if: matrix.service == 'backend' && matrix.target == 'runtime'
+        # deploy/compose.yaml's `monitoring` profile as a user runs it: the setup job creates the
+        # Grafana database role and the configuration, Prometheus scrapes the backend, Grafana has
+        # both data sources and the dashboards and keeps its door shut. (The web UI and the worker
+        # aren't needed for this, so only their dependencies start.)
+        run: |
+          set -euo pipefail
+          docker tag steerhouse-backend:runtime ghcr.io/honeybeartech/steerhouse-backend:ci
+          dir="$RUNNER_TEMP/monitoring"
+          mkdir -p "$dir/secrets"
+          cp deploy/compose.yaml "$dir/"
+          cd "$dir"
+          db_password=$(openssl rand -hex 16)
+          printf '%s' "$db_password" > secrets/postgres_password
+          printf 'postgresql+psycopg://steerhouse:%s@postgres:5432/steerhouse' "$db_password" > secrets/database_url
+          printf '%s' "$(openssl rand -hex 32)" > secrets/auth_secret_key
+          python3 -c "import base64, os; print(base64.urlsafe_b64encode(os.urandom(32)).decode(), end='')" > secrets/credential_encryption_key
+          printf '%s' ci-monitoring-admin-pw-0123 > secrets/admin_password
+          printf '%s' ci-grafana-admin-pw-0123 > secrets/grafana_admin_password
+          printf '%s' "$(openssl rand -hex 24)" > secrets/grafana_db_password
+          chmod 444 secrets/*
+          cat > .env <<EOF
+          STEERHOUSE_VERSION=ci
+          WORKER_TOKEN=$(openssl rand -hex 32)
+          METRICS_TOKEN=$(openssl rand -hex 32)
+          METRICS_HOST=0.0.0.0
+          GRAFANA_BIND=127.0.0.1:3100
+          COOKIE_SECURE=false
+          EOF
+          compose() { docker compose -p steerhouse-ci --profile monitoring "$@"; }
+          trap 'compose logs --tail 30 monitoring-setup prometheus grafana || true; compose down -v || true' EXIT
+          compose up -d grafana
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:3100/api/health > /dev/null && break
+            sleep 2
+          done
+          grafana="http://admin:ci-grafana-admin-pw-0123@localhost:3100"
+          # The password comes from the secret file; nobody gets in without it, and nobody signs up.
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3100/api/search)" = 401
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://admin:wrong@localhost:3100/api/user)" = 401
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json'             -d '{"email":"x@example.com","name":"x","password":"abcdefgh123"}' http://localhost:3100/api/user/signup)" = 401
+          for uid in steerhouse-prometheus steerhouse-database; do
+            curl -sf "$grafana/api/datasources/uid/$uid/health" | grep -q '"status":"OK"'
+          done
+          test "$(curl -sf "$grafana/api/search?type=dash-db" | grep -o '"uid":"steerhouse-[a-z]*"' | sort -u | wc -l)" = 3
+          # Prometheus scrapes the backend (the first scrape comes within its 30 s interval).
+          for i in $(seq 1 40); do
+            compose exec -T prometheus wget -qO- http://localhost:9090/api/v1/targets | grep -q '"health":"up"' && break
+            sleep 3
+          done
+          compose exec -T prometheus wget -qO- http://localhost:9090/api/v1/targets | grep -q '"health":"up"'
+          # Prometheus is never published, and the Grafana role reads nothing outside the analytics views.
+          test -z "$(docker port steerhouse-ci-prometheus-1)"
+          if compose exec -T -e PGPASSWORD="$(cat secrets/grafana_db_password)" postgres \
+              psql -h 127.0.0.1 -U grafana_ro -d steerhouse -tAc 'SELECT 1 FROM public.users'; then
+            echo "grafana_ro can read the users table"; exit 1
+          fi
+          compose exec -T -e PGPASSWORD="$(cat secrets/grafana_db_password)" postgres \
+            psql -h 127.0.0.1 -U grafana_ro -d steerhouse -tAc 'SELECT count(*) FROM analytics.runs'
+
       - name: Smoke test dynamic inventory sources with the backend runtime image
         if: matrix.service == 'backend' && matrix.target == 'runtime'
         # The isolated worker above refreshes generator and constructed sources over a static

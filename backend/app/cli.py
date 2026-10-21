@@ -18,6 +18,9 @@
     analytics-grant <role>           let a (Grafana) database role read the analytics views
     analytics-check <role>           check such a role can read nothing else
     analytics-revoke <role>          take that access away again
+    monitoring-setup                 the `monitoring` compose profile's one-shot: create the
+                                     Grafana database role and write Prometheus's and Grafana's
+                                     configuration (see docs/installing.md)
 
 reset-2fa is the break-glass for a user who lost their authenticator, passkeys and recovery
 codes when no other admin can reset it from the Users page.
@@ -210,6 +213,28 @@ def analytics_command(command: str, role: str) -> int:
         db.close()
 
 
+def monitoring_setup(
+    role: str, database_url_file: Path, password_file: Path, prometheus_dir: Path, grafana_dir: Path
+) -> int:
+    from app import monitoring  # only this command needs it
+
+    try:
+        result = monitoring.setup(
+            database_url_file.read_text().strip(),
+            role=role,
+            password=password_file.read_text(),
+            token=os.environ.get("METRICS_TOKEN", ""),
+            prometheus_dir=prometheus_dir,
+            grafana_dir=grafana_dir,
+        )
+    except (monitoring.MonitoringError, analytics.AnalyticsError, OSError) as exc:
+        print(f"monitoring-setup: {exc}", file=sys.stderr)
+        return 1
+    if not _report(role, result):
+        print("monitoring-setup: Prometheus and Grafana configuration written.")
+    return 0 if result.ok else 1
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m app.cli", description="Steerhouse maintenance")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -242,7 +267,24 @@ def main(argv: list[str] | None = None) -> int:
         ("analytics-revoke", "take a role's access to the analytics views away"),
     ):
         commands.add_parser(name, help=about).add_argument("role")
+    setup = commands.add_parser(
+        "monitoring-setup",
+        help="create the Grafana database role and write Prometheus's and Grafana's configuration",
+    )
+    setup.add_argument("--role", default="grafana_ro")
+    setup.add_argument("--database-url-file", default="/run/secrets/database_url")
+    setup.add_argument("--password-file", default="/run/secrets/grafana_db_password")
+    setup.add_argument("--prometheus-dir", default="/out/prometheus")
+    setup.add_argument("--grafana-dir", default="/out/grafana")
     args = parser.parse_args(argv)
+    if args.command == "monitoring-setup":
+        return monitoring_setup(
+            args.role,
+            Path(args.database_url_file),
+            Path(args.password_file),
+            Path(args.prometheus_dir),
+            Path(args.grafana_dir),
+        )
     if args.command.startswith("analytics-"):
         return analytics_command(args.command, args.role)
     if args.command == "migrate":

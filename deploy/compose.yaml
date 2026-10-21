@@ -1,6 +1,8 @@
 # Steerhouse from the published, signed images: see docs/installing.md.
 # Secrets are files in ./secrets (Docker secrets); settings that aren't secret go in .env next to this
 # file (copy .env.example). Put a TLS-terminating reverse proxy in front of the frontend's port.
+# Prometheus and Grafana, already connected to Steerhouse, are an option: the `monitoring` profile
+# (docker compose --profile monitoring up -d; see "Monitoring" in docs/installing.md).
 
 name: steerhouse
 
@@ -37,11 +39,15 @@ services:
       INTERNAL_API_HOST: 0.0.0.0
       # Also needed by the workers, which can't read secret files safely (see docs/installing.md).
       WORKER_TOKEN: ${WORKER_TOKEN:?set WORKER_TOKEN in .env}
+      # Prometheus metrics, for the `monitoring` profile: nothing listens until METRICS_TOKEN is set,
+      # and METRICS_HOST=0.0.0.0 lets Prometheus reach it over the `monitoring` network. Never publish it.
+      METRICS_TOKEN: ${METRICS_TOKEN:-}
+      METRICS_HOST: ${METRICS_HOST:-127.0.0.1}
     # Read from /run/secrets/<name> (SECRETS_DIR).
     secrets: [auth_secret_key, credential_encryption_key, admin_password, database_url]
     volumes:
       - backend-data:/data
-    networks: [default, db, workers]
+    networks: [default, db, workers, monitoring]
     depends_on:
       postgres:
         condition: service_healthy
@@ -100,6 +106,102 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # ---- The `monitoring` profile: Prometheus and Grafana, wired to Steerhouse ----
+
+  # Runs first, once per start: creates the read-only database role Grafana logs in as, and writes
+  # Prometheus's scrape config (it holds the metrics token) and Grafana's data sources and dashboards
+  # into their own volumes. Root with one capability: the volumes belong to different users (Prometheus's
+  # to nobody, Grafana's to root), and the files it writes are readable by all of them.
+  monitoring-setup:
+    profiles: [monitoring]
+    image: ghcr.io/honeybeartech/steerhouse-backend:${STEERHOUSE_VERSION:-0.8.0}
+    command: ["python", "-m", "app.cli", "monitoring-setup"]
+    user: "0"
+    cap_drop: [ALL]
+    cap_add: [DAC_OVERRIDE]
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+    tmpfs: [/tmp]
+    environment:
+      METRICS_TOKEN: ${METRICS_TOKEN:-}
+    secrets: [database_url, grafana_db_password]
+    volumes:
+      - prometheus-config:/out/prometheus
+      - grafana-provisioning:/out/grafana
+    networks: [db]
+    healthcheck:
+      disable: true
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: "no"
+
+  # Never published: only Grafana (and you, with docker compose exec) can ask it anything.
+  prometheus:
+    profiles: [monitoring]
+    image: prom/prometheus:v3.15.0@sha256:efd719c99d83b060d9daefdcf00360461adf279f45ef5391f8d111892118753e
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-30d}
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+    tmpfs: [/tmp]
+    volumes:
+      - prometheus-config:/etc/prometheus:ro
+      - prometheus-data:/prometheus
+    networks: [monitoring]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+    depends_on:
+      monitoring-setup:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  # On loopback by default: publish it through your reverse proxy, like the web UI.
+  grafana:
+    profiles: [monitoring]
+    image: grafana/grafana:13.2.3@sha256:b28bae15e219c998fb0e0424ed724930cc61b1f61fb404d47c862f9a23f9e572
+    environment:
+      GF_PATHS_PROVISIONING: /provisioning
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana_admin_password
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:3000}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_SECURITY_DISABLE_GRAVATAR: "true"
+      GF_SNAPSHOTS_EXTERNAL_ENABLED: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      # Otherwise Grafana swaps its bundled plugins for the latest from grafana.com a little after start.
+      GF_PLUGINS_PREINSTALL_DISABLED: "true"
+    secrets: [grafana_admin_password, grafana_db_password]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+    tmpfs: [/tmp]
+    volumes:
+      - grafana-provisioning:/provisioning:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "${GRAFANA_BIND:-127.0.0.1:3000}:3000"
+    # monitoring: Prometheus. db: the database, as the read-only role. grafana-edge: only for the port.
+    networks: [monitoring, db, grafana-edge]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    restart: unless-stopped
+
 secrets:
   postgres_password:
     file: ./secrets/postgres_password
@@ -111,6 +213,11 @@ secrets:
     file: ./secrets/credential_encryption_key
   admin_password:
     file: ./secrets/admin_password
+  # Only the `monitoring` profile reads these two (see docs/installing.md).
+  grafana_admin_password:
+    file: ./secrets/grafana_admin_password
+  grafana_db_password:
+    file: ./secrets/grafana_db_password
 
 networks:
   default:
@@ -120,7 +227,16 @@ networks:
   # Not internal: playbooks and inventory refreshes reach your hosts and APIs from here (but
   # not the backend or cloud metadata: the worker's egress filter).
   workers:
+  # The backend's metrics port, Prometheus and Grafana, with no way out.
+  monitoring:
+    internal: true
+  # Grafana alone, so its port can be published (an internal network can't publish one).
+  grafana-edge:
 
 volumes:
   postgres-data:
   backend-data:
+  prometheus-config:
+  prometheus-data:
+  grafana-provisioning:
+  grafana-data:

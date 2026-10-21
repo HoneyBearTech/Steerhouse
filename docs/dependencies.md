@@ -25,7 +25,7 @@ standard tool; nothing is copied into the repository ("vendored").
 | --- | --- | --- | --- |
 | Backend (Python) | `backend/pyproject.toml` | `backend/uv.lock` (versions and hashes) | `uv sync --frozen` |
 | Frontend (JavaScript) | `frontend/package.json` | `frontend/package-lock.json` (versions and integrity hashes) | `npm ci` |
-| Container base images | `backend/Dockerfile`, `frontend/Dockerfile`, `docker-compose.yml`, `deploy/compose.yaml` | image digests (`@sha256:…`) | Docker |
+| Container base images | `backend/Dockerfile`, `frontend/Dockerfile`, `docker-compose.yml`, `deploy/compose.yaml` (including the monitoring profile's Prometheus and Grafana) | image digests (`@sha256:…`) | Docker |
 | CI actions | `.github/workflows/*.yml` | full commit SHAs | GitHub Actions |
 
 The runtime images also install OS packages from Debian and Alpine with `apt-get` and `apk`, and apply

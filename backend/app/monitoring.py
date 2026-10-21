@@ -1,0 +1,238 @@
+"""Setup for the `monitoring` compose profile (Prometheus + Grafana, pre-wired).
+
+`python -m app.cli monitoring-setup` runs as a one-shot service before them. It creates (or
+updates) the read-only database role Grafana logs in as, and writes the generated
+configuration into two volumes: Prometheus's scrape config (which holds the metrics token)
+and Grafana's provisioning (data sources, dashboard provider and the dashboards from the
+image), so Grafana never sees the token. Running it again is safe: it rotates the role's
+password to the secret's current value and replaces the generated files.
+"""
+
+import base64
+import hashlib
+import hmac
+import json
+import os
+import re
+import shutil
+from pathlib import Path
+
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import Session, sessionmaker
+
+from app import analytics
+
+DEFAULT_ROLE = "grafana_ro"
+CONNECTION_LIMIT = 10
+MIN_TOKEN_LENGTH = 32
+MIN_PASSWORD_LENGTH = 16
+_ROLE_NAME = re.compile(r"[a-z_][a-z0-9_]{0,62}")
+_PRINTABLE_ASCII = re.compile(r"[\x21-\x7e]+")
+
+# The ids the alert examples and the CI check refer to; the dashboards pick data sources
+# through their own variables.
+PROMETHEUS_UID = "steerhouse-prometheus"
+DATABASE_UID = "steerhouse-database"
+DASHBOARD_FILES = ("steerhouse-overview", "steerhouse-execution", "steerhouse-security")
+
+
+class MonitoringError(Exception):
+    pass
+
+
+def scram_sha256(password: str, *, salt: bytes | None = None, iterations: int = 4096) -> str:
+    """Postgres's stored form of a password (RFC 5802 / 7677), so the clear password is never
+    in the SQL we send or in the server's statement log. ASCII only, where SASLprep changes
+    nothing."""
+    salt = salt if salt is not None else os.urandom(16)
+    salted = hashlib.pbkdf2_hmac("sha256", password.encode("ascii"), salt, iterations)
+    client_key = hmac.new(salted, b"Client Key", "sha256").digest()
+    server_key = hmac.new(salted, b"Server Key", "sha256").digest()
+    stored_key = hashlib.sha256(client_key).digest()
+
+    def b64(data: bytes) -> str:
+        return base64.b64encode(data).decode()
+
+    return f"SCRAM-SHA-256${iterations}:{b64(salt)}${b64(stored_key)}:{b64(server_key)}"
+
+
+def check_password(password: str) -> str:
+    password = password.strip()
+    if len(password) < MIN_PASSWORD_LENGTH or not _PRINTABLE_ASCII.fullmatch(password):
+        raise MonitoringError(
+            f"The Grafana database password must be at least {MIN_PASSWORD_LENGTH} printable "
+            "ASCII characters with no spaces (try: openssl rand -hex 24)."
+        )
+    return password
+
+
+def check_metrics_token(token: str) -> str:
+    token = token.strip()
+    if len(token) < MIN_TOKEN_LENGTH or not _PRINTABLE_ASCII.fullmatch(token):
+        raise MonitoringError(
+            f"METRICS_TOKEN must be set in .env: at least {MIN_TOKEN_LENGTH} printable ASCII "
+            "characters with no spaces (try: openssl rand -hex 32)."
+        )
+    return token
+
+
+def ensure_role(db: Session, role: str, password: str) -> analytics.CheckResult:
+    """Creates the login role (or sets its password again), limits it, grants it the analytics
+    views and checks that it can read nothing else."""
+    if not _ROLE_NAME.fullmatch(role):
+        raise MonitoringError(f"{role!r} is not a plain lower-case role name.")
+    # In text(), a colon starts a bind parameter: the verifier's are escaped.
+    verifier = scram_sha256(check_password(password)).replace(":", "\\:")
+    quoted = analytics._quoted(db, role)
+    existing = db.execute(
+        text(
+            "SELECT rolsuper, rolbypassrls, rolname = current_user, "
+            "pg_has_role(rolname, current_user, 'MEMBER') FROM pg_roles WHERE rolname = :r"
+        ),
+        {"r": role},
+    ).first()
+    if existing is not None and (existing[0] or existing[1] or existing[2] or existing[3]):
+        raise MonitoringError(
+            f"The role {role!r} already exists and is not a plain read-only login role "
+            "(superuser, bypasses row security, or the app's own user): not touching it."
+        )
+    verb = "CREATE" if existing is None else "ALTER"
+    db.execute(
+        text(
+            f"{verb} ROLE {quoted} WITH LOGIN NOINHERIT CONNECTION LIMIT {CONNECTION_LIMIT} "
+            f"PASSWORD '{verifier}'"
+        )
+    )
+    database = analytics._quoted(db, db.execute(text("SELECT current_database()")).scalar_one())
+    for setting in (
+        "default_transaction_read_only = on",
+        "statement_timeout = '30s'",
+        f"search_path = {analytics.SCHEMA}",
+    ):
+        db.execute(text(f"ALTER ROLE {quoted} SET {setting}"))
+    db.execute(text(f"GRANT CONNECT ON DATABASE {database} TO {quoted}"))
+    db.execute(text(f"REVOKE TEMPORARY ON DATABASE {database} FROM PUBLIC"))
+    db.commit()
+    return analytics.grant(db, role)
+
+
+def _yaml(value: object) -> str:
+    return json.dumps(value)  # a JSON scalar is a YAML scalar
+
+
+def prometheus_config(token: str) -> str:
+    return f"""\
+# Generated by `python -m app.cli monitoring-setup` at every start: edits are replaced.
+global:
+  scrape_interval: 30s
+scrape_configs:
+  - job_name: steerhouse
+    scrape_timeout: 10s
+    authorization:
+      type: Bearer
+      credentials: {_yaml(token)}
+    static_configs:
+      - targets: ["backend:8002"]
+"""
+
+
+def datasources_config(role: str) -> str:
+    return f"""\
+# Generated by `python -m app.cli monitoring-setup` at every start: edits are replaced.
+apiVersion: 1
+datasources:
+  - name: Steerhouse Prometheus
+    uid: {PROMETHEUS_UID}
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    jsonData:
+      timeInterval: 30s
+  - name: Steerhouse database
+    uid: {DATABASE_UID}
+    type: grafana-postgresql-datasource
+    access: proxy
+    url: postgres:5432
+    user: {_yaml(role)}
+    jsonData:
+      database: steerhouse
+      sslmode: disable  # the database network is private to this stack
+      postgresVersion: 1800
+      maxOpenConns: 5
+      maxIdleConns: 2
+      connMaxLifetime: 14400
+    secureJsonData:
+      password: $__file{{/run/secrets/grafana_db_password}}
+"""
+
+
+DASHBOARDS_CONFIG = """\
+# Generated by `python -m app.cli monitoring-setup` at every start: edits are replaced.
+apiVersion: 1
+providers:
+  - name: Steerhouse
+    folder: Steerhouse
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false  # the dashboards come with each release; save changes as a copy
+    options:
+      path: /provisioning/steerhouse-dashboards
+"""
+
+
+def dashboards_source() -> Path:
+    override = os.environ.get("GRAFANA_DASHBOARDS_DIR")
+    if override:
+        return Path(override)
+    image = Path("/opt/steerhouse/grafana/dashboards")
+    return (
+        image if image.is_dir() else Path(__file__).resolve().parents[2] / "grafana" / "dashboards"
+    )
+
+
+def _write(path: Path, content: str | bytes, mode: int = 0o644) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(path.name + ".tmp")
+    temporary.write_bytes(content.encode() if isinstance(content, str) else content)
+    temporary.chmod(mode)
+    temporary.replace(path)
+
+
+def write_config(prometheus_dir: Path, grafana_dir: Path, *, token: str, role: str) -> None:
+    source = dashboards_source()
+    missing = [name for name in DASHBOARD_FILES if not (source / f"{name}.json").is_file()]
+    if missing:
+        raise MonitoringError(f"The dashboards are missing from {source}: {', '.join(missing)}.")
+    _write(prometheus_dir / "prometheus.yml", prometheus_config(token))
+    _write(grafana_dir / "datasources" / "steerhouse.yaml", datasources_config(role))
+    _write(grafana_dir / "dashboards" / "steerhouse.yaml", DASHBOARDS_CONFIG)
+    target = grafana_dir / "steerhouse-dashboards"
+    if target.exists():
+        shutil.rmtree(target)
+    for name in DASHBOARD_FILES:
+        _write(target / f"{name}.json", (source / f"{name}.json").read_bytes())
+
+
+def setup(
+    database_url: str,
+    *,
+    role: str,
+    password: str,
+    token: str,
+    prometheus_dir: Path,
+    grafana_dir: Path,
+) -> analytics.CheckResult:
+    """Everything, in the order that leaves nothing half-done: values are checked first, then the
+    role, then the files."""
+    token = check_metrics_token(token)
+    check_password(password)
+    engine = create_engine(database_url)
+    try:
+        with sessionmaker(bind=engine)() as db:
+            result = ensure_role(db, role, password)
+    finally:
+        engine.dispose()
+    if not result.ok:
+        return result
+    write_config(prometheus_dir, grafana_dir, token=token, role=role)
+    return result

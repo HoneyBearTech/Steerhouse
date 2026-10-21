@@ -482,8 +482,14 @@ to see what was sent; failed deliveries are retried for up to about 1 h 45 min.
 
 ## Monitoring with Prometheus and Grafana (optional)
 
+**The quick way:** the production compose file has a `monitoring` profile that runs Prometheus and Grafana
+already connected to Steerhouse, with the dashboards loaded: see
+[Monitoring in the install guide](docs/installing.md#7-monitoring-with-prometheus-and-grafana-optional). The rest of
+this section is what it sets up, for people who run their own Prometheus and Grafana.
+
 Set `METRICS_TOKEN` and the backend serves Prometheus metrics at `/metrics` on a port of its own, 8002
-(`METRICS_PORT`, listening on `METRICS_HOST`, which compose sets to `0.0.0.0`). Scrapers must send the token
+(`METRICS_PORT`, listening on `METRICS_HOST`, which the dev compose file sets to `0.0.0.0` and the production
+one reads from `.env`). Scrapers must send the token
 as a bearer token; wrong tokens get 401, are throttled per address and recorded in the audit log. Without a
 token nothing listens. The port is never served through the frontend or the API's port 8000; the dev compose
 stack publishes it on `127.0.0.1` only. [grafana/prometheus/scrape.example.yml](grafana/prometheus/scrape.example.yml)

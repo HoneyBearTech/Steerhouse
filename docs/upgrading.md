@@ -28,6 +28,10 @@ A complete backup has three parts. Take them together, and keep them apart from 
 
 The other files in `secrets/` and `.env` are easy to recreate, but backing them up saves time.
 
+With the [monitoring profile](installing.md#7-monitoring-with-prometheus-and-grafana-optional) on, the volumes
+`prometheus-data` (metrics history) and `grafana-data` (Grafana's users and settings) are worth backing up only
+if you want that history; the data sources and dashboards are rebuilt at each start from the release you run.
+
 ## Restore
 
 Restore into the same version that made the backup, then upgrade if you need to.

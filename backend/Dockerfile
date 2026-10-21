@@ -61,6 +61,9 @@ COPY --from=build /app /app
 # The license travels with the image (the named build context "repo" is the repository root:
 # docker-compose.yml, and build-contexts in the workflows).
 COPY --from=repo LICENSE /usr/share/licenses/steerhouse/LICENSE
+# The Grafana dashboards, which the monitoring profile's setup job (python -m app.cli
+# monitoring-setup) provisions into Grafana.
+COPY --from=repo grafana/dashboards /opt/steerhouse/grafana/dashboards
 LABEL org.opencontainers.image.title="Steerhouse backend" \
       org.opencontainers.image.description="Steerhouse API and worker: run Ansible playbooks from a web UI" \
       org.opencontainers.image.source="https://github.com/HoneyBearTech/Steerhouse" \

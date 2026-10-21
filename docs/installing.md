@@ -137,6 +137,59 @@ Open `https://steerhouse.example.com`, sign in as `admin` with the password you 
   ([notifications](user-guide/notifications.md));
 - schedule backups ([upgrading.md](upgrading.md#back-up)).
 
+## 7. Monitoring with Prometheus and Grafana (optional)
+
+The `monitoring` profile adds Prometheus and Grafana, already connected to Steerhouse: Prometheus scrapes the
+API's metrics, Grafana has both data sources and Steerhouse's three [dashboards](../grafana/README.md). Nothing
+changes for an installation that doesn't turn it on.
+
+1. **Two more secrets** in `secrets/` (like step 2):
+
+   ```sh
+   cd /opt/steerhouse
+   sudo sh -c 'printf %s "a password you will log in to Grafana with" > secrets/grafana_admin_password'
+   sudo sh -c 'openssl rand -hex 24 | tr -d "\n" > secrets/grafana_db_password'
+   sudo chmod 444 secrets/grafana_admin_password secrets/grafana_db_password
+   ```
+
+   `grafana_db_password` is the password of the read-only database role `grafana_ro`, which Steerhouse creates
+   for you; you never type it.
+2. **Settings** in `.env`: a token Prometheus uses to read the metrics, the backend's metrics listener
+   (it only answers on the internal `monitoring` network), and the profile itself, so every `docker compose`
+   command includes it:
+
+   ```
+   METRICS_TOKEN=<openssl rand -hex 32>
+   METRICS_HOST=0.0.0.0
+   COMPOSE_PROFILES=monitoring
+   ```
+
+3. **Start it**: `sudo docker compose up -d --wait`. A one-shot service, `monitoring-setup`, runs first: it
+   creates `grafana_ro`, limits it to the read-only `analytics` views, and writes the Prometheus and
+   Grafana configuration. Then open `http://127.0.0.1:3000`, sign in as `admin` with the password from
+   step 1, and look in the **Steerhouse** folder.
+
+Things to know:
+
+- **Where it listens.** Grafana only on `127.0.0.1:3000` (`GRAFANA_BIND`): publish it through your
+  TLS-terminating proxy like the web UI, and set `GRAFANA_ROOT_URL` to the address people use. Prometheus is
+  never published; it and the metrics port sit on an internal network. Grafana has no anonymous access, no
+  sign-up and no telemetry or update checks.
+- **The admin password** only sets Grafana's first admin: change it afterwards inside Grafana, not in the
+  file.
+- **Rotating the database password.** Replace `secrets/grafana_db_password`, then
+  `sudo docker compose up -d --force-recreate monitoring-setup grafana`.
+- **Dashboards and data sources are regenerated at every start** from the Steerhouse release you run, so
+  upgrading updates them. They are read-only in Grafana: save changes as a copy.
+- **Data.** Prometheus keeps 30 days (`PROMETHEUS_RETENTION`). The volumes `prometheus-data` and
+  `grafana-data` hold it and Grafana's own users and settings; the rest is rebuilt.
+- **Alerts.** Four example rules (failure ratio, sign-in failures, notification backlog, metrics missing) are in
+  [grafana/provisioning/alerting](../grafana/provisioning/alerting/steerhouse.example.yaml); add contact points
+  in Grafana first.
+- **Turning it off.** Remove `COMPOSE_PROFILES` and `METRICS_TOKEN`/`METRICS_HOST` from `.env` and run
+  `sudo docker compose up -d --remove-orphans`. The role `grafana_ro` stays in the database until you drop it
+  (`python -m app.cli analytics-revoke grafana_ro`, then `DROP ROLE grafana_ro`).
+
 ## Uninstalling
 
 ```sh
@@ -145,6 +198,9 @@ sudo docker compose down        # stops and removes the containers; data stays i
 sudo docker compose down -v     # also deletes the database and run history: this can't be undone
 sudo docker image rm ghcr.io/honeybeartech/steerhouse-backend:0.8.0 ghcr.io/honeybeartech/steerhouse-frontend:0.8.0
 ```
+
+With monitoring on, run these with `--profile monitoring` (or `COMPOSE_PROFILES` set, as in step 7), or the
+Prometheus and Grafana containers and volumes stay behind.
 
 Then delete `/opt/steerhouse`, including `secrets/` (or keep `credential_encryption_key` with your backups
 if you might restore one).

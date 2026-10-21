@@ -1,7 +1,8 @@
 # Grafana dashboards for Steerhouse
 
-Three dashboards for a Grafana you run yourself (Steerhouse doesn't bundle one). They read two
-data sources:
+Three dashboards for Grafana. The production compose file can run Grafana and Prometheus for you with
+these loaded (the `monitoring` profile: see [Monitoring in the install guide](../docs/installing.md#7-monitoring-with-prometheus-and-grafana-optional));
+otherwise bring your own Grafana and import them as below. They read two data sources:
 
 - **Prometheus**, scraping Steerhouse's metrics: what is happening now (queue, workers, API,
   notifications, sign-in failures). Turn the metrics on with `METRICS_TOKEN`; see

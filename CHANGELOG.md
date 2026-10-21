@@ -7,8 +7,23 @@ steps when upgrading; those are listed under "Upgrading" and in [docs/upgrading.
 
 ## [Unreleased]
 
+### Upgrading
+
+- `deploy/compose.yaml` gained the `monitoring` profile and the backend a `monitoring` network and two optional
+  settings (`METRICS_TOKEN`, `METRICS_HOST`): replace your compose file as for any release. Nothing else changes
+  unless you turn the profile on.
+
 ### Added
 
+- **Monitoring profile.** `deploy/compose.yaml` has an optional `monitoring` profile that runs Prometheus and
+  Grafana already connected to Steerhouse: a one-shot `monitoring-setup` creates the read-only `grafana_ro`
+  database role (`python -m app.cli monitoring-setup`; its password comes from `secrets/grafana_db_password`,
+  stored as a SCRAM verifier) and writes Prometheus's scrape config and Grafana's data sources and the three
+  dashboards (carried in the backend image). Grafana listens on `127.0.0.1:3000` (`GRAFANA_BIND`) with its admin
+  password from `secrets/grafana_admin_password`; Prometheus is never published. Turn it on with `METRICS_TOKEN`,
+  `METRICS_HOST=0.0.0.0` and `COMPOSE_PROFILES=monitoring` in `.env`; see
+  [docs/installing.md](docs/installing.md#7-monitoring-with-prometheus-and-grafana-optional). Dependabot now also
+  watches the images in `deploy/compose.yaml`.
 - `OIDC_EMAIL_VERIFIED_CLAIM` (and `email_verified_claim` per provider in `OIDC_PROVIDERS`): the ID token claim
   that says the provider verified the email, `email_verified` by default. Microsoft Entra sends no
   `email_verified`, so its sign-ins were refused as `not_linked`; name `xms_edov` there (see the README). The
