@@ -7,6 +7,12 @@ steps when upgrading; those are listed under "Upgrading" and in [docs/upgrading.
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-10-21
+
+Runs show what each host did in each task and can be compared side by side. An optional compose profile runs
+Prometheus and Grafana already connected to Steerhouse, and Microsoft Entra sign-in works through a configurable
+email-verified claim.
+
 ### Upgrading
 
 - `deploy/compose.yaml` gained the `monitoring` profile and the backend a `monitoring` network and two optional
@@ -33,6 +39,13 @@ steps when upgrading; those are listed under "Upgrading" and in [docs/upgrading.
   goes (`GET /api/runs/{id}/hosts`, from the stored output; API keys may read it like the run's log).
   **Compare with…** puts two runs side by side, matching tasks by play, role, name and occurrence.
 - `GET /api/runs` takes `playbook_id` and `inventory_id` to list only runs of one playbook or inventory.
+
+### Changed
+
+- Dependencies updated: Grafana 13.2.4 in the monitoring profile, uv 0.13.4 in the backend image, React and
+  React DOM 19.3.1 (bumped together from now on), SQLAlchemy 2.1.5, pydantic-settings 2.16.0, ansible-lint 26.10.1
+  and other patch updates. Dependabot also watches the images in `deploy/compose.yaml`, and a bump to them is
+  never merged without a look.
 
 ## [0.8.0] - 2026-10-21
 
@@ -610,7 +623,8 @@ come with SBOM and provenance attestations; see [docs/verifying-releases.md](doc
   need the usual pull-and-restart: database migrations run on start-up. An installation still on the
   old SQLite database must run the one-time import first (see [docs/upgrading.md](docs/upgrading.md)).
 
-[Unreleased]: https://github.com/HoneyBearTech/Steerhouse/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/HoneyBearTech/Steerhouse/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/HoneyBearTech/Steerhouse/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/HoneyBearTech/Steerhouse/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/HoneyBearTech/Steerhouse/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/HoneyBearTech/Steerhouse/compare/v0.5.0...v0.6.0

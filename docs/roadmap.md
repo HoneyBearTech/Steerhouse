@@ -29,8 +29,10 @@ inventory sources with their own schedules, from git files and scripts. **v0.7.0
 reading more secrets from the secret store (git tokens, moving existing secrets in, queueing runs while it
 is down) and limiting GitHub sign-in to organisations and teams, with teams mapped to project roles. **v0.8.0** (October 2026) added several OpenID Connect providers with
 project roles from their groups and logout at the provider, secret store login with a JWT or Kubernetes
-service account, a Transit-wrapped encryption key, and a diagram of an inventory's groups. The
-most recent release is the supported version.
+service account, a Transit-wrapped encryption key, and a diagram of an inventory's groups. **v0.9.0**
+(October 2026) added a by-host view of each run's tasks with run-to-run comparison, an optional Prometheus and
+Grafana set-up in the production compose file, and sign-in with Microsoft Entra. The most recent release is the
+supported version.
 
 ## Over the following year
 
