@@ -2826,6 +2826,92 @@
         "title": "HostOut",
         "type": "object"
       },
+      "HostResultOut": {
+        "properties": {
+          "changed": {
+            "title": "Changed",
+            "type": "boolean"
+          },
+          "msg": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Msg"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "changed",
+              "failed",
+              "ignored",
+              "skipped",
+              "unreachable"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "changed",
+          "msg"
+        ],
+        "title": "HostResultOut",
+        "type": "object"
+      },
+      "HostTaskOut": {
+        "properties": {
+          "handler": {
+            "title": "Handler",
+            "type": "boolean"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "play": {
+            "title": "Play",
+            "type": "string"
+          },
+          "results": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HostResultOut"
+            },
+            "title": "Results",
+            "type": "object"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          }
+        },
+        "required": [
+          "key",
+          "play",
+          "role",
+          "name",
+          "handler",
+          "results"
+        ],
+        "title": "HostTaskOut",
+        "type": "object"
+      },
       "HostUpdate": {
         "properties": {
           "group_ids": {
@@ -5076,6 +5162,45 @@
           "refused"
         ],
         "title": "RunEgressOut",
+        "type": "object"
+      },
+      "RunHostsOut": {
+        "properties": {
+          "complete": {
+            "title": "Complete",
+            "type": "boolean"
+          },
+          "hosts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Hosts",
+            "type": "array"
+          },
+          "lost_events": {
+            "title": "Lost Events",
+            "type": "integer"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/HostTaskOut"
+            },
+            "title": "Tasks",
+            "type": "array"
+          },
+          "truncated": {
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "hosts",
+          "tasks",
+          "lost_events",
+          "truncated",
+          "complete"
+        ],
+        "title": "RunHostsOut",
         "type": "object"
       },
       "RunOut": {
@@ -17989,7 +18114,7 @@
     },
     "/api/runs": {
       "get": {
-        "description": "Newest first; `status` (repeatable) keeps only runs in those states, `limit` the newest N.",
+        "description": "Newest first; `status` (repeatable) keeps only runs in those states, `playbook_id` and\n`inventory_id` only runs of that playbook or inventory, `limit` the newest N.",
         "operationId": "list_runs_api_runs_get",
         "parameters": [
           {
@@ -18025,6 +18150,38 @@
                 }
               ],
               "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "playbook_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Playbook Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "inventory_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Inventory Id"
             }
           },
           {
@@ -18630,6 +18787,81 @@
           }
         },
         "summary": "Run Egress",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/runs/{run_id}/hosts": {
+      "get": {
+        "description": "What each host did in each task, from the run's output so far: one result per task and\nhost (a loop's items are folded into it), with the module's short message.",
+        "operationId": "run_hosts_api_runs__run_id__hosts_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "steerhouse_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Steerhouse Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunHostsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run Hosts",
         "tags": [
           "runs"
         ]

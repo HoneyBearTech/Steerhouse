@@ -57,6 +57,24 @@ the title says why when it isn't Ansible's own result (a lost worker, a timeout,
 what it has produced so far. Secret values known to Steerhouse are removed from the output before it's stored,
 so they aren't in the download either. Viewers can download too.
 
+## By host, and comparing runs
+
+The **By host** tab of a run's page shows what each host did in each task: one column per host, one row per
+task (grouped by play), and in each cell **ok**, **changed**, **failed**, **failed (ignored)** (the task
+said `ignore_errors`), **skipped** or **unreachable**. A loop is one result: it fails if any item failed.
+Tasks where the hosts did different things are highlighted, and **Only tasks where hosts differ** hides
+the rest. Click a cell to read the module's short message (for example why it failed). The tab works while
+the run is going and refreshes every few seconds until it ends. Results come from the stored output, so
+an event that was too large to keep leaves a gap, which the tab says.
+
+**Compare with…** puts two runs side by side: pick another run (the playbook's earlier runs come first,
+the one before this run is preselected; tick **Show every run in this project** for others). Tasks are
+matched by play, role, name and how many times the name has come up, so renaming a task makes it show as
+only in one run. Each cell shows what the host did in this run, then in the other where they differ, a host
+without a result in one run counts as different, and **Only tasks that differ between the runs** is on by
+default. The page's address keeps the tab and the other run (`?view=hosts&compare=12`), so you can share it.
+Anyone who can see the runs can use it; it shows no more than the output does.
+
 ## When ssh refuses a host key
 
 On an inventory that checks host keys (see [Inventories](inventories.md#ssh-host-keys)), a host whose key

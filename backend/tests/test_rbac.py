@@ -61,6 +61,7 @@ MATRIX = [
     ("POST", "/api/playbooks/999/lint", OPERATOR_UP),
     ("GET", "/api/lint-jobs/999", ALL),
     ("GET", "/api/runs/999/log", ALL),
+    ("GET", "/api/runs/999/hosts", ALL),
     ("GET", "/api/run-templates", ALL),
     ("GET", "/api/run-templates/999", ALL),
     ("POST", "/api/run-templates", OPERATOR_UP),

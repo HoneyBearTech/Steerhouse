@@ -7,6 +7,14 @@ steps when upgrading; those are listed under "Upgrading" and in [docs/upgrading.
 
 ## [Unreleased]
 
+### Added
+
+- **By host** tab on a run: what each host did in each task (ok, changed, failed, ignored, skipped,
+  unreachable) with the module's short message, tasks where hosts differ highlighted, refreshing while the run
+  goes (`GET /api/runs/{id}/hosts`, from the stored output; API keys may read it like the run's log).
+  **Compare with…** puts two runs side by side, matching tasks by play, role, name and occurrence.
+- `GET /api/runs` takes `playbook_id` and `inventory_id` to list only runs of one playbook or inventory.
+
 ## [0.8.0] - 2026-10-21
 
 Single sign-on grows up: several OpenID Connect providers, project roles from OIDC groups, and logout at the

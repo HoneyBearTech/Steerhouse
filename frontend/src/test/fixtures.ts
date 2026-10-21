@@ -5,6 +5,7 @@ import type {
   GitSource,
   HostKey,
   HostKeys,
+  HostTask,
   InventoryDetail,
   InventoryGraph,
   InventoryRefresh,
@@ -18,6 +19,7 @@ import type {
   PlaybookDetail,
   ProjectAccess,
   Run,
+  RunHosts,
   RunTemplate,
   User,
   SshCertificateInfo,
@@ -240,6 +242,22 @@ export function vaultPassword(overrides: Partial<VaultPassword> = {}): VaultPass
     store_location: null,
     ...overrides,
   };
+}
+
+export function hostTask(overrides: Partial<HostTask> = {}): HostTask {
+  return {
+    key: JSON.stringify(["site", null, "x", 1]),
+    play: "site",
+    role: null,
+    name: "x",
+    handler: false,
+    results: {},
+    ...overrides,
+  };
+}
+
+export function runHosts(overrides: Partial<RunHosts> = {}): RunHosts {
+  return { hosts: [], tasks: [], lost_events: 0, truncated: false, complete: true, ...overrides };
 }
 
 export function run(overrides: Partial<Run> = {}): Run {

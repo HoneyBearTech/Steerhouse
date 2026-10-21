@@ -8,11 +8,13 @@ import {
   channel,
   credential,
   graph,
+  hostTask,
   inventory,
   inventorySource,
   mergedHost,
   playbook,
   run,
+  runHosts,
   runTemplate,
   sshCertCredential,
   sshCertificate,
@@ -211,6 +213,35 @@ test.describe("the group diagram", () => {
       await expect(page.locator("[data-diagram] .react-flow__node").first()).toBeVisible();
       const box = await page.locator("[data-diagram]").boundingBox();
       expect(box && box.x >= 0 && box.x + box.width <= width + 1).toBe(true);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
+    });
+  }
+});
+
+test.describe("the run's results by host", () => {
+  // Twelve hosts with long names and one long task name: the grid scrolls inside its own box.
+  const hosts = Array.from({ length: 12 }, (_, n) => `${LONG}-web${n}.example.com`);
+  const result = { status: "ok" as const, changed: false, msg: null };
+  const ROUTES = {
+    ...LONG_ROUTES,
+    "GET /runs/:id/hosts": runHosts({
+      hosts,
+      tasks: [
+        hostTask({
+          key: "a",
+          name: `${LONG} task with a long name`,
+          results: Object.fromEntries(hosts.map((host, n) => [host, n % 3 ? result : { ...result, status: "failed" as const }])),
+        }),
+      ],
+    }),
+  };
+
+  for (const width of [375, 1280]) {
+    test(`keeps the page from scrolling sideways at ${width} px`, async ({ page }) => {
+      await fakeApi(page, ROUTES);
+      await page.setViewportSize({ width, height: 800 });
+      await open(page, "/runs/7?view=hosts");
+      await expect(page.getByRole("columnheader").nth(1)).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
     });
   }

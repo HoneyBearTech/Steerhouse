@@ -1,13 +1,16 @@
 import * as React from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LiveLogViewer } from "@/components/live-log-viewer";
 import { PageHeader } from "@/components/page-header";
+import { RunHostsPanel } from "@/components/run-hosts-panel";
+import { Tabs } from "@/components/ui/tabs";
 import { useAuth } from "@/context/auth-context";
 import { api, ApiError, type Run, type RunArtifacts, type RunEgress } from "@/lib/api";
+import { tabId } from "@/lib/tabs";
 import { deletedItems, describeDeleted, formatDuration, STATUS_VARIANT } from "@/lib/runs";
 
 
@@ -463,6 +466,23 @@ export function RunDetailPage() {
   const params = useParams<{ id: string }>();
   const runId = Number(params.id);
   const [run, setRun] = React.useState<Run | null>(null);
+  const [search, setSearch] = useSearchParams();
+  const view = search.get("view") === "hosts" ? "hosts" : "output";
+  const compare = Number(search.get("compare")) || null;
+
+  function show(next: Record<string, string | null>) {
+    setSearch(
+      (current) => {
+        const updated = new URLSearchParams(current);
+        for (const [name, value] of Object.entries(next)) {
+          if (value === null) updated.delete(name);
+          else updated.set(name, value);
+        }
+        return updated;
+      },
+      { replace: true },
+    );
+  }
 
   React.useEffect(() => {
     let active = true;
@@ -577,15 +597,36 @@ export function RunDetailPage() {
 
       <Artifacts run={run} />
 
-      <Card>
-        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
-          <CardTitle>{live ? "Live output" : "Output"}</CardTitle>
-          <DownloadLog run={run} />
-        </CardHeader>
-        <CardContent>
-          <LiveLogViewer key={runId} runId={runId} follow={live} />
-        </CardContent>
-      </Card>
+      <Tabs
+        label="Run results"
+        value={view}
+        onValueChange={(value) => show({ view: value === "hosts" ? "hosts" : null, compare: null })}
+        tabs={[
+          { value: "output", label: "Run output" },
+          { value: "hosts", label: "By host" },
+        ]}
+      />
+      {view === "hosts" ? (
+        <div role="tabpanel" aria-labelledby={tabId("hosts")}>
+          <Card>
+            <CardContent className="pt-6">
+              <RunHostsPanel run={run} compareId={compare} onCompare={(id) => show({ compare: id === null ? null : String(id) })} />
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
+        <div role="tabpanel" aria-labelledby={tabId("output")}>
+          <Card>
+            <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
+              <CardTitle>{live ? "Live output" : "Output"}</CardTitle>
+              <DownloadLog run={run} />
+            </CardHeader>
+            <CardContent>
+              <LiveLogViewer key={runId} runId={runId} follow={live} />
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

@@ -71,6 +71,33 @@ class RunEgressOut(BaseModel):
     refused: list[EgressRefused]
 
 
+class HostResultOut(BaseModel):
+    status: Literal["ok", "changed", "failed", "ignored", "skipped", "unreachable"]
+    changed: bool
+    msg: str | None
+
+
+class HostTaskOut(BaseModel):
+    # Matches the same task in another run of the playbook (the uuids differ per run).
+    key: str
+    play: str
+    role: str | None
+    name: str
+    handler: bool
+    results: dict[str, HostResultOut]
+
+
+class RunHostsOut(BaseModel):
+    hosts: list[str]
+    tasks: list[HostTaskOut]
+    # Events whose details were cut or left out of the log: the grid has holes for them.
+    lost_events: int
+    # The run has more tasks or hosts than are listed.
+    truncated: bool
+    # The run has finished: nothing more will appear.
+    complete: bool
+
+
 class ArtifactsOut(BaseModel):
     files: list[dict]  # [{"path", "size"}]
     bytes: int | None

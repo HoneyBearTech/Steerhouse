@@ -26,6 +26,7 @@ from app.api_keys import run_limit_problem
 from app.db import get_db, get_sessionmaker
 from app.dependencies import SESSION_COOKIE_NAME, RateLimited, authenticate_request
 from app.hardening import client_ip
+from app.host_results import host_results
 from app.inventory_render import merge, static_data, static_problems
 from app.inventory_sources import enqueue_refresh, has_sources
 from app.models import (
@@ -54,7 +55,7 @@ from app.permissions import (
     two_factor_setup_required,
 )
 from app.queue import QUEUE_TOPIC, fail_run, wait_reason
-from app.schemas.runs import ArtifactsOut, RunCreate, RunEgressOut, RunOut
+from app.schemas.runs import ArtifactsOut, RunCreate, RunEgressOut, RunHostsOut, RunOut
 from app.scoping import get_scoped, readable_project_ids
 from app.ssh_certificates import run_credential_problem
 from app.storage import playbook_path, run_artifacts_path, run_log_path
@@ -107,17 +108,24 @@ def list_runs(
     request: Request,
     project_id: int | None = Query(None),
     status_in: list[RunStatus] | None = Query(None, alias="status"),
+    playbook_id: int | None = Query(None),
+    inventory_id: int | None = Query(None),
     limit: int | None = Query(None, ge=1, le=500),
     user: User = Depends(_guard),
     db: Session = Depends(get_db),
 ) -> list[RunOut]:
-    """Newest first; `status` (repeatable) keeps only runs in those states, `limit` the newest N."""
+    """Newest first; `status` (repeatable) keeps only runs in those states, `playbook_id` and
+    `inventory_id` only runs of that playbook or inventory, `limit` the newest N."""
     ids = readable_project_ids(db, user, request, Permission.CONTENT_READ, project_id)
     query = db.query(Run)
     if ids is not None:
         query = query.filter(Run.project_id.in_(ids))
     if status_in:
         query = query.filter(Run.status.in_([s.value for s in status_in]))
+    if playbook_id is not None:
+        query = query.filter(Run.playbook_id == playbook_id)
+    if inventory_id is not None:
+        query = query.filter(Run.inventory_id == inventory_id)
     query = query.order_by(Run.id.desc())
     if limit is not None:
         query = query.limit(limit)
@@ -698,6 +706,41 @@ def export_log(
         headers={
             "Content-Disposition": f'attachment; filename="steerhouse-run-{run.id}.{extension}"'
         },
+    )
+
+
+@router.get("/{run_id}/hosts", response_model=RunHostsOut)
+def run_hosts(
+    run_id: int,
+    request: Request,
+    user: User = Depends(_guard),
+    db: Session = Depends(get_db),
+) -> RunHostsOut:
+    """What each host did in each task, from the run's output so far: one result per task and
+    host (a loop's items are folded into it), with the module's short message."""
+    run = get_scoped(db, user, request, Run, run_id, Permission.CONTENT_READ, "Run not found")
+    found = host_results(run.id, run.log_bytes)
+    return RunHostsOut.model_validate(
+        {
+            "hosts": found.hosts,
+            "tasks": [
+                {
+                    "key": row.key,
+                    "play": row.play,
+                    "role": row.role,
+                    "name": row.name,
+                    "handler": row.handler,
+                    "results": {
+                        host: {"status": r.status, "changed": r.changed, "msg": r.msg}
+                        for host, r in row.results.items()
+                    },
+                }
+                for row in found.tasks
+            ],
+            "lost_events": found.lost_events,
+            "truncated": found.truncated,
+            "complete": run.status in FINISHED_STATUSES,
+        }
     )
 
 

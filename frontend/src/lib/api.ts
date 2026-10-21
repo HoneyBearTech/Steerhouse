@@ -267,6 +267,33 @@ export interface EgressRefused {
   port: number;
 }
 
+export type HostStatus = "ok" | "changed" | "failed" | "ignored" | "skipped" | "unreachable";
+
+export interface HostResult {
+  status: HostStatus;
+  changed: boolean;
+  msg: string | null;
+}
+
+export interface HostTask {
+  // The same task in another run of the playbook has the same key.
+  key: string;
+  play: string;
+  role: string | null;
+  name: string;
+  handler: boolean;
+  results: Record<string, HostResult>;
+}
+
+// What each host did in each task, from the run's output so far.
+export interface RunHosts {
+  hosts: string[];
+  tasks: HostTask[];
+  lost_events: number;
+  truncated: boolean;
+  complete: boolean;
+}
+
 // What a restricted run could reach, as its worker resolved it before it started.
 export interface RunEgress {
   restricted: boolean;
@@ -1479,15 +1506,17 @@ export const api = {
     }),
 
   /** Newest first; `status` keeps only runs in those states, `limit` the newest N. */
-  listRuns: (options: { status?: Run["status"][]; limit?: number } = {}) => {
+  listRuns: (options: { status?: Run["status"][]; limit?: number; playbook_id?: number } = {}) => {
     const params = new URLSearchParams();
     if (activeProjectId !== null) params.set("project_id", String(activeProjectId));
+    if (options.playbook_id !== undefined) params.set("playbook_id", String(options.playbook_id));
     for (const status of options.status ?? []) params.append("status", status);
     if (options.limit !== undefined) params.set("limit", String(options.limit));
     const query = params.toString();
     return request<Run[]>(`/runs${query ? `?${query}` : ""}`);
   },
   getRun: (id: number) => request<Run>(`/runs/${id}`),
+  getRunHosts: (id: number) => request<RunHosts>(`/runs/${id}/hosts`),
   createRun: (payload: {
     playbook_id: number;
     inventory_id: number;

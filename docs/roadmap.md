@@ -36,7 +36,6 @@ most recent release is the supported version.
 
 **Running playbooks**
 - Ad-hoc commands (one module against an inventory or group), run and audited like playbook runs.
-- Comparing runs host by host, and two runs side by side.
 - Inventory sources from git: inventory files, and scripts in a synced repository.
 
 **Authoring**
