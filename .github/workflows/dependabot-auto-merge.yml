@@ -24,10 +24,12 @@ jobs:
       # nginx) always need a human look — their tags don't follow strict
       # semver, so Dependabot's patch/minor/major classification can be
       # misleading (e.g. python 3.12-slim -> 3.14-slim landed as a non-major
-      # update despite skipping a whole Python version).
+      # update despite skipping a whole Python version). The same goes for the
+      # images in the compose files (Postgres, Prometheus, Grafana).
       - name: Enable auto-merge for safe updates
         if: |
           steps.metadata.outputs.package-ecosystem != 'docker' &&
+          steps.metadata.outputs.package-ecosystem != 'docker_compose' &&
           (steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
            steps.metadata.outputs.update-type == 'version-update:semver-minor')
         run: gh pr merge --auto --squash "$PR_URL"

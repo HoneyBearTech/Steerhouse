@@ -11,6 +11,11 @@ updates:
     assignees: ["HoneyBearTech"]
     schedule:
       interval: "weekly"
+    groups:
+      # react and react-dom must have exactly the same version (react-dom refuses to start
+      # otherwise), so they are always bumped together.
+      react:
+        patterns: ["react", "react-dom"]
 
   - package-ecosystem: "docker"
     directory: "/backend"
