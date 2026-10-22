@@ -135,83 +135,6 @@ wheels = [
 ]
 
 [[package]]
-name = "steerhouse-backend"
-version = "0.9.0"
-source = { editable = "." }
-dependencies = [
-    { name = "alembic" },
-    { name = "ansible" },
-    { name = "ansible-lint" },
-    { name = "ansible-runner" },
-    { name = "argon2-cffi" },
-    { name = "boto3" },
-    { name = "botocore" },
-    { name = "cryptography" },
-    { name = "fastapi", extra = ["standard"] },
-    { name = "httpx" },
-    { name = "itsdangerous" },
-    { name = "joserfc" },
-    { name = "prometheus-client" },
-    { name = "proxmoxer" },
-    { name = "psycopg", extra = ["binary"] },
-    { name = "pydantic-settings" },
-    { name = "pyotp" },
-    { name = "pytz" },
-    { name = "pyyaml" },
-    { name = "requests" },
-    { name = "segno" },
-    { name = "sqlalchemy" },
-    { name = "webauthn" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "hypothesis" },
-    { name = "pytest" },
-    { name = "pytest-cov" },
-    { name = "ruff" },
-]
-fuzz = [
-    { name = "atheris", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "alembic", specifier = ">=1.16" },
-    { name = "ansible", specifier = ">=14.4.0" },
-    { name = "ansible-lint", specifier = ">=26.9.0" },
-    { name = "ansible-runner", specifier = ">=2.4,<3" },
-    { name = "argon2-cffi", specifier = ">=23.1" },
-    { name = "boto3", specifier = ">=1.43.114" },
-    { name = "botocore", specifier = ">=1.43.114" },
-    { name = "cryptography", specifier = ">=43" },
-    { name = "fastapi", extras = ["standard"], specifier = ">=0.115" },
-    { name = "httpx", specifier = ">=0.28" },
-    { name = "itsdangerous", specifier = ">=2.2" },
-    { name = "joserfc", specifier = ">=1.7.5" },
-    { name = "prometheus-client", specifier = ">=0.21" },
-    { name = "proxmoxer", specifier = ">=2.3.0" },
-    { name = "psycopg", extras = ["binary"], specifier = ">=3.2" },
-    { name = "pydantic-settings", specifier = ">=2.5" },
-    { name = "pyotp", specifier = ">=2.9" },
-    { name = "pytz", specifier = ">=2025.2" },
-    { name = "pyyaml", specifier = ">=6.0" },
-    { name = "requests", specifier = ">=2.34.2" },
-    { name = "segno", specifier = ">=1.6" },
-    { name = "sqlalchemy", specifier = ">=2.0" },
-    { name = "webauthn", specifier = ">=3.0.1" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "hypothesis", specifier = ">=6" },
-    { name = "pytest", specifier = ">=8.3" },
-    { name = "pytest-cov", specifier = ">=6" },
-    { name = "ruff", specifier = ">=0.7" },
-]
-fuzz = [{ name = "atheris", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'", specifier = ">=3.1" }]
-
-[[package]]
 name = "anyio"
 version = "4.15.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1250,14 +1173,14 @@ wheels = [
 
 [[package]]
 name = "joserfc"
-version = "1.7.5"
+version = "1.7.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cryptography" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/19/94/80fea1514b7c6d7d37804d3fe9ca81455f633347fc98731bd71ffe1faa17/joserfc-1.7.5.tar.gz", hash = "sha256:d5ff536e658e17664f8c1b1ab60dc4aa62aa973fcef1edd33cc44bda45d6f5ea", size = 234990, upload-time = "2026-08-29T13:05:42.057Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/bd/15/48ff246732232d35ee234228def22b52455fcc55577f06146602399a29b0/joserfc-1.7.7.tar.gz", hash = "sha256:471d0fd12a5a0d1c0942de280f39efe6f597878315033270b504d4d006d25510", size = 237446, upload-time = "2026-10-19T00:30:29.974Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/67/c5/82addfd375e5ee6520644e0553e4aadde92d668c4fc99cc716d337fe7bb3/joserfc-1.7.5-py3-none-any.whl", hash = "sha256:add2c2c84e8373b084d526a8b53daba5d7a513a118cd2dcd9fc9f979d0922159", size = 71269, upload-time = "2026-08-29T13:05:40.718Z" },
+    { url = "https://files.pythonhosted.org/packages/df/9f/934db284aa22f37af59708e382903860d4b81329c137b1b0ed2745daeb65/joserfc-1.7.7-py3-none-any.whl", hash = "sha256:06979cfbab78bc802f14c0358f32969826cc26720e13cb38926ffdc86bc0cb2c", size = 71758, upload-time = "2026-10-19T00:30:28.498Z" },
 ]
 
 [[package]]
@@ -2341,6 +2264,83 @@ sdist = { url = "https://files.pythonhosted.org/packages/b5/b4/205b0d5241d934e8a
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c8/cb/6a6a47d5b464bd08695d254f3da6e7986cc70c9fa5d778eda57538edfe56/starlette-1.6.0-py3-none-any.whl", hash = "sha256:a86dd39d14bb45f85a3d18525215a9ef0cfd1f192ac793220e72598c90335f0c", size = 75969, upload-time = "2026-08-08T18:27:56.196Z" },
 ]
+
+[[package]]
+name = "steerhouse-backend"
+version = "0.9.0"
+source = { editable = "." }
+dependencies = [
+    { name = "alembic" },
+    { name = "ansible" },
+    { name = "ansible-lint" },
+    { name = "ansible-runner" },
+    { name = "argon2-cffi" },
+    { name = "boto3" },
+    { name = "botocore" },
+    { name = "cryptography" },
+    { name = "fastapi", extra = ["standard"] },
+    { name = "httpx" },
+    { name = "itsdangerous" },
+    { name = "joserfc" },
+    { name = "prometheus-client" },
+    { name = "proxmoxer" },
+    { name = "psycopg", extra = ["binary"] },
+    { name = "pydantic-settings" },
+    { name = "pyotp" },
+    { name = "pytz" },
+    { name = "pyyaml" },
+    { name = "requests" },
+    { name = "segno" },
+    { name = "sqlalchemy" },
+    { name = "webauthn" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "hypothesis" },
+    { name = "pytest" },
+    { name = "pytest-cov" },
+    { name = "ruff" },
+]
+fuzz = [
+    { name = "atheris", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "alembic", specifier = ">=1.16" },
+    { name = "ansible", specifier = ">=14.4.0" },
+    { name = "ansible-lint", specifier = ">=26.9.0" },
+    { name = "ansible-runner", specifier = ">=2.4,<3" },
+    { name = "argon2-cffi", specifier = ">=23.1" },
+    { name = "boto3", specifier = ">=1.43.114" },
+    { name = "botocore", specifier = ">=1.43.114" },
+    { name = "cryptography", specifier = ">=43" },
+    { name = "fastapi", extras = ["standard"], specifier = ">=0.115" },
+    { name = "httpx", specifier = ">=0.28" },
+    { name = "itsdangerous", specifier = ">=2.2" },
+    { name = "joserfc", specifier = ">=1.7.5" },
+    { name = "prometheus-client", specifier = ">=0.21" },
+    { name = "proxmoxer", specifier = ">=2.3.0" },
+    { name = "psycopg", extras = ["binary"], specifier = ">=3.2" },
+    { name = "pydantic-settings", specifier = ">=2.5" },
+    { name = "pyotp", specifier = ">=2.9" },
+    { name = "pytz", specifier = ">=2025.2" },
+    { name = "pyyaml", specifier = ">=6.0" },
+    { name = "requests", specifier = ">=2.34.2" },
+    { name = "segno", specifier = ">=1.6" },
+    { name = "sqlalchemy", specifier = ">=2.0" },
+    { name = "webauthn", specifier = ">=3.0.1" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "hypothesis", specifier = ">=6" },
+    { name = "pytest", specifier = ">=8.3" },
+    { name = "pytest-cov", specifier = ">=6" },
+    { name = "ruff", specifier = ">=0.7" },
+]
+fuzz = [{ name = "atheris", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'", specifier = ">=3.1" }]
 
 [[package]]
 name = "subprocess-tee"
