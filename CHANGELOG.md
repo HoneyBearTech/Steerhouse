@@ -35,8 +35,8 @@ one. The contrast of every colour pair is now tested in both themes.
   have a border with 3:1 contrast. The README shows screenshots of the dashboard, run output and an inventory
   in both themes and on a phone.
 - Dependencies updated: uv 0.13.5 and the latest `nginx-unprivileged` 1.31 image in the containers, joserfc
-  1.7.7, CodeMirror (language 6.13.1, view 6.43.14), the Radix label and switch primitives, lucide-react 1.59.0
-  and hypothesis 6.170.2.
+  1.7.7, black 26.10.1 (CVE-2026-114134; it comes with ansible-lint), CodeMirror (language 6.13.1, view 6.43.14),
+  the Radix label and switch primitives, lucide-react 1.59.0 and hypothesis 6.170.2.
 
 ## [0.9.0] - 2026-10-21
 
