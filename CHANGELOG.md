@@ -7,6 +7,23 @@ steps when upgrading; those are listed under "Upgrading" and in [docs/upgrading.
 
 ## [Unreleased]
 
+### Upgrading
+
+- `deploy/compose.yaml` now pulls the images from Docker Hub (`honeybeartech/steerhouse-backend` and
+  `honeybeartech/steerhouse-frontend`). GHCR keeps getting the same signed images, so an installation that
+  pulls from `ghcr.io/honeybeartech/…` can stay as it is; to switch, take the new compose file or change the
+  `image:` lines. Docker Hub has the images from this release on.
+
+### Added
+
+- **Images on Docker Hub**: each release publishes both images to Docker Hub as well as GHCR: one build, the
+  same digest in both, signed with cosign in each registry, with SBOM and provenance attestations, and listed
+  in the release's `images.txt`. The Docker Hub pages are kept up to date from `docs/dockerhub.md`. The
+  Docker Hub token the release workflow needs lives in a `dockerhub` environment that only version tags can
+  use ([GOVERNANCE.md](GOVERNANCE.md#the-projects-own-secrets)).
+- README badges for the Docker Build and fuzzing workflows, the latest release, the Docker Hub image (version,
+  size, pulls), the GHCR mirror and the license.
+
 ## [0.10.0] - 2026-10-22
 
 Steerhouse has a look of its own: a mark, a violet accent and the Geist fonts, and a light theme beside the dark

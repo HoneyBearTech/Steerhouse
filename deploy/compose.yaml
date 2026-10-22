@@ -27,7 +27,7 @@ services:
     restart: unless-stopped
 
   backend:
-    image: ghcr.io/honeybeartech/steerhouse-backend:${STEERHOUSE_VERSION:-0.10.0}
+    image: honeybeartech/steerhouse-backend:${STEERHOUSE_VERSION:-0.10.0}
     environment:
       ENVIRONMENT: production
       COOKIE_SECURE: ${COOKIE_SECURE:-true}
@@ -54,7 +54,7 @@ services:
     restart: unless-stopped
 
   worker:
-    image: ghcr.io/honeybeartech/steerhouse-backend:${STEERHOUSE_VERSION:-0.10.0}
+    image: honeybeartech/steerhouse-backend:${STEERHOUSE_VERSION:-0.10.0}
     command: ["python", "-m", "app.worker"]
     # Root with only these capabilities, so it can run each slot's playbooks as a user of its
     # own, and keep them away from the backend and cloud metadata (NET_ADMIN: firewall rules in
@@ -93,7 +93,7 @@ services:
     restart: unless-stopped
 
   frontend:
-    image: ghcr.io/honeybeartech/steerhouse-frontend:${STEERHOUSE_VERSION:-0.10.0}
+    image: honeybeartech/steerhouse-frontend:${STEERHOUSE_VERSION:-0.10.0}
     environment:
       # Who may name the client in X-Forwarded-For: see .env.example.
       TRUSTED_PROXIES: ${TRUSTED_PROXIES:-gateway}
@@ -114,7 +114,7 @@ services:
   # to nobody, Grafana's to root), and the files it writes are readable by all of them.
   monitoring-setup:
     profiles: [monitoring]
-    image: ghcr.io/honeybeartech/steerhouse-backend:${STEERHOUSE_VERSION:-0.10.0}
+    image: honeybeartech/steerhouse-backend:${STEERHOUSE_VERSION:-0.10.0}
     command: ["python", "-m", "app.cli", "monitoring-setup"]
     user: "0"
     cap_drop: [ALL]

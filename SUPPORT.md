@@ -28,5 +28,5 @@ best-effort policy, not a contract.
 - If a supported line will end differently (for example a 1.x line kept alive after 2.0), it will be
   announced in the release notes and in this table first.
 
-Container images stay available on GitHub Container Registry after their support ends, so existing
+Container images stay available on Docker Hub and GitHub Container Registry after their support ends, so existing
 deployments keep working, but they won't get fixes: run the latest release.

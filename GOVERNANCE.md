@@ -42,14 +42,15 @@ Who can change the code, releases and project settings, as of the date of this f
 | Resource | Who has access | Through |
 | --- | --- | --- |
 | Repository administration (settings, rulesets, secrets, merging) | the maintainer (@HoneyBearTech) | GitHub account owner |
-| Publishing releases and images on GHCR | the release workflow, on a version tag pushed by the maintainer | GitHub Actions, short-lived `GITHUB_TOKEN` and Sigstore identity |
+| Publishing releases and images on Docker Hub and GHCR | the release workflow, on a version tag pushed by the maintainer | GitHub Actions: short-lived `GITHUB_TOKEN` and Sigstore identity, and a Docker Hub access token held in the `dockerhub` environment |
+| The Docker Hub account `honeybeartech` (image repositories, access tokens) | the maintainer | Docker Hub sign-in |
 | Signing version tags | the maintainer | personal SSH key |
 | The OpenSSF Best Practices badge entry | the maintainer | GitHub sign-in |
 | Security advisories and private vulnerability reports | the maintainer | GitHub |
 | Automated changes | Dependabot (pull requests only; it can't merge without the required checks) | GitHub |
 
-There are no other collaborators, and no repository secrets: workflows use only the per-job
-`GITHUB_TOKEN`, read-only unless a job asks for more.
+There are no other collaborators. Workflows use the per-job `GITHUB_TOKEN`, read-only unless a job asks for
+more; the only stored secret is the Docker Hub token described below.
 
 ## Granting elevated access
 
@@ -69,19 +70,25 @@ this review:
 
 The credentials Steerhouse's project (not a deployment) holds, and how they're handled:
 
-- **What exists**: the maintainer's GitHub account and its recovery codes, and the SSH key that signs
-  tags. Releases are signed keylessly (Sigstore), so there is no long-lived signing key, and workflows
-  need no stored secrets.
+- **What exists**: the maintainer's GitHub account and its recovery codes, the SSH key that signs tags,
+  the Docker Hub account `honeybeartech`, and one Docker Hub access token (Read, Write, Delete) that the
+  release workflow uses to push the images and update their Docker Hub pages. Releases are signed keylessly
+  (Sigstore), so there is no long-lived signing key.
+- **The Docker Hub token** is a GitHub encrypted secret (`DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`) in the
+  `dockerhub` environment, which only version tags (`v*.*.*`) can use: only the release workflow's publish
+  job reads it, never a pull request, another branch or another workflow.
 - **Storage**: in the maintainer's password manager, never in the repository, CI configuration, issues or
   logs. GitHub secret scanning with push protection blocks committed secrets, and `.gitignore` excludes
   `.env` files and the deployment's `deploy/secrets/`.
 - **Access**: the maintainer only, plus the successor through the lockbox described under Continuity.
 - **Rotation**: recovery codes are regenerated after use and at least yearly, and the lockbox updated;
-  the tag-signing key is replaced (and `.github/allowed_signers` updated) if it may have been exposed.
+  the tag-signing key is replaced (and `.github/allowed_signers` updated) if it may have been exposed; the
+  Docker Hub token is replaced at least yearly, and at once if it may have been exposed (revoke it on Docker
+  Hub, then update the environment's secret).
   Any secret that might have leaked is revoked and replaced at once, and the incident handled as in
   [SECURITY.md](SECURITY.md).
-- If the project ever needs a stored secret in CI, it goes into GitHub encrypted secrets or an environment
-  with required reviewers, available only to the job that needs it, with this section updated.
+- Any further secret CI needs goes into GitHub encrypted secrets in an environment limited to the job that
+  needs it (or with required reviewers), with this section updated.
 
 ## Continuity
 
@@ -92,9 +99,10 @@ within a week of it being confirmed that the maintainer can no longer support it
   trusted person the maintainer has chosen can open through the password manager's **emergency access**,
   after a waiting period of a few days (short enough to act within the week). It holds the login and
   two-factor recovery codes of the GitHub account that owns the repository, access to that account's
-  email address (GitHub asks it to confirm sign-ins from new devices), and the SSH key that signs release
-  tags. Release images are signed keylessly by GitHub Actions, so whoever controls the repository can keep
-  publishing verifiable releases.
+  email address (GitHub asks it to confirm sign-ins from new devices), the SSH key that signs release
+  tags, and the login of the Docker Hub account that publishes the images. Release images are signed
+  keylessly by GitHub Actions, so whoever controls the repository (and the Docker Hub token in its
+  `dockerhub` environment) can keep publishing verifiable releases.
 - **A succession note**, kept with the maintainer's personal papers and referenced from the lockbox, gives
   that person the right to continue the project or to hand it to a new maintainer.
 - Everything else needed to keep working on the project is in this repository: the code, the CI

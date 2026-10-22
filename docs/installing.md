@@ -14,9 +14,11 @@ Steerhouse is meant for a trusted network: don't expose it directly to the inter
 - A DNS name for Steerhouse and a reverse proxy that serves it over HTTPS (Caddy, nginx, Traefik, …).
 - Network access from that host to the machines your playbooks manage, over SSH.
 
-The images are `ghcr.io/honeybeartech/steerhouse-backend` (the API and the workers) and
-`ghcr.io/honeybeartech/steerhouse-frontend` (the web UI). Each release is signed; check them with
-[verifying-releases.md](verifying-releases.md) before you start.
+The images are `honeybeartech/steerhouse-backend` (the API and the workers) and
+`honeybeartech/steerhouse-frontend` (the web UI) on [Docker Hub](https://hub.docker.com/u/honeybeartech), from
+v0.10.1 on. The same images are mirrored to `ghcr.io/honeybeartech/steerhouse-backend` and
+`ghcr.io/honeybeartech/steerhouse-frontend`, which also hold the releases before v0.10.1. Each release is signed
+in both registries; check them with [verifying-releases.md](verifying-releases.md) before you start.
 
 ## 1. Get the deployment files
 
@@ -196,7 +198,7 @@ Things to know:
 cd /opt/steerhouse
 sudo docker compose down        # stops and removes the containers; data stays in the volumes
 sudo docker compose down -v     # also deletes the database and run history: this can't be undone
-sudo docker image rm ghcr.io/honeybeartech/steerhouse-backend:0.10.0 ghcr.io/honeybeartech/steerhouse-frontend:0.10.0
+sudo docker image rm honeybeartech/steerhouse-backend:0.10.0 honeybeartech/steerhouse-frontend:0.10.0
 ```
 
 With monitoring on, run these with `--profile monitoring` (or `COMPOSE_PROFILES` set, as in step 7), or the

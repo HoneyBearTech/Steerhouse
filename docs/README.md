@@ -16,6 +16,7 @@
 - [Installing](installing.md): run a release in production from the signed images, behind HTTPS.
 - [Upgrading, backups and restores](upgrading.md).
 - [Verifying releases](verifying-releases.md): check the signatures on images, checksums and tags.
+- [Docker Hub page](dockerhub.md): the overview shown on the images' Docker Hub pages, updated by each release.
 
 ## Using Steerhouse
 
