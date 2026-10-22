@@ -31,8 +31,9 @@ is down) and limiting GitHub sign-in to organisations and teams, with teams mapp
 project roles from their groups and logout at the provider, secret store login with a JWT or Kubernetes
 service account, a Transit-wrapped encryption key, and a diagram of an inventory's groups. **v0.9.0**
 (October 2026) added a by-host view of each run's tasks with run-to-run comparison, an optional Prometheus and
-Grafana set-up in the production compose file, and sign-in with Microsoft Entra. The most recent release is the
-supported version.
+Grafana set-up in the production compose file, and sign-in with Microsoft Entra. **v0.10.0** (October 2026)
+gave the web UI its own look, with a new mark, a violet accent and Geist fonts, and added a light theme. The
+most recent release is the supported version.
 
 ## Over the following year
 

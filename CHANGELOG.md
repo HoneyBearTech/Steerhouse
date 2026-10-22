@@ -7,6 +7,11 @@ steps when upgrading; those are listed under "Upgrading" and in [docs/upgrading.
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-10-22
+
+Steerhouse has a look of its own: a mark, a violet accent and the Geist fonts, and a light theme beside the dark
+one. The contrast of every colour pair is now tested in both themes.
+
 ### Added
 
 - **A light theme.** Steerhouse still opens in its dark theme; your user name in the header (or the menu
@@ -29,6 +34,9 @@ steps when upgrading; those are listed under "Upgrading" and in [docs/upgrading.
   served by Steerhouse itself, instead of Inter and JetBrains Mono. Text boxes, selects and outline buttons
   have a border with 3:1 contrast. The README shows screenshots of the dashboard, run output and an inventory
   in both themes and on a phone.
+- Dependencies updated: uv 0.13.5 and the latest `nginx-unprivileged` 1.31 image in the containers, joserfc
+  1.7.7, black 26.10.1 (CVE-2026-114134; it comes with ansible-lint), CodeMirror (language 6.13.1, view 6.43.14),
+  the Radix label and switch primitives, lucide-react 1.59.0 and hypothesis 6.170.2.
 
 ## [0.9.0] - 2026-10-21
 
@@ -646,7 +654,8 @@ come with SBOM and provenance attestations; see [docs/verifying-releases.md](doc
   need the usual pull-and-restart: database migrations run on start-up. An installation still on the
   old SQLite database must run the one-time import first (see [docs/upgrading.md](docs/upgrading.md)).
 
-[Unreleased]: https://github.com/HoneyBearTech/Steerhouse/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/HoneyBearTech/Steerhouse/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/HoneyBearTech/Steerhouse/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/HoneyBearTech/Steerhouse/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/HoneyBearTech/Steerhouse/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/HoneyBearTech/Steerhouse/compare/v0.6.0...v0.7.0
