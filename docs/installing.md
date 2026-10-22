@@ -21,13 +21,13 @@ The images are `ghcr.io/honeybeartech/steerhouse-backend` (the API and the worke
 ## 1. Get the deployment files
 
 Download `compose.yaml` and `.env.example` from the [`deploy/` folder](../deploy) of the release you install
-(for v0.9.0: `https://raw.githubusercontent.com/HoneyBearTech/Steerhouse/v0.9.0/deploy/compose.yaml`), into a
+(for v0.10.0: `https://raw.githubusercontent.com/HoneyBearTech/Steerhouse/v0.10.0/deploy/compose.yaml`), into a
 directory of their own, for example `/opt/steerhouse`:
 
 ```sh
 sudo mkdir -p /opt/steerhouse && cd /opt/steerhouse
-sudo curl -fsSLO https://raw.githubusercontent.com/HoneyBearTech/Steerhouse/v0.9.0/deploy/compose.yaml
-sudo curl -fsSL -o .env https://raw.githubusercontent.com/HoneyBearTech/Steerhouse/v0.9.0/deploy/.env.example
+sudo curl -fsSLO https://raw.githubusercontent.com/HoneyBearTech/Steerhouse/v0.10.0/deploy/compose.yaml
+sudo curl -fsSL -o .env https://raw.githubusercontent.com/HoneyBearTech/Steerhouse/v0.10.0/deploy/.env.example
 ```
 
 ## 2. Create the secrets
@@ -196,7 +196,7 @@ Things to know:
 cd /opt/steerhouse
 sudo docker compose down        # stops and removes the containers; data stays in the volumes
 sudo docker compose down -v     # also deletes the database and run history: this can't be undone
-sudo docker image rm ghcr.io/honeybeartech/steerhouse-backend:0.9.0 ghcr.io/honeybeartech/steerhouse-frontend:0.9.0
+sudo docker image rm ghcr.io/honeybeartech/steerhouse-backend:0.10.0 ghcr.io/honeybeartech/steerhouse-frontend:0.10.0
 ```
 
 With monitoring on, run these with `--profile monitoring` (or `COMPOSE_PROFILES` set, as in step 7), or the
