@@ -25,21 +25,23 @@ With cosign 2.6, add `--new-bundle-format` to `cosign verify`. The examples use 
 
 ```sh
 for image in steerhouse-backend steerhouse-frontend; do
-  cosign verify "ghcr.io/honeybeartech/${image}:0.10.0" \
+  cosign verify "docker.io/honeybeartech/${image}:0.10.0" \
     --certificate-identity-regexp '^https://github\.com/HoneyBearTech/Steerhouse/\.github/workflows/docker-publish\.yml@refs/tags/v' \
     --certificate-oidc-issuer https://token.actions.githubusercontent.com
 done
 ```
 
-cosign prints the verified signatures, including the commit and tag they were built from. A tag such as
-`0.10.0` can be moved, a digest can't: for production, pin the digests from the release's `images.txt`
-(after verifying it, below), for example `ghcr.io/honeybeartech/steerhouse-backend@sha256:…`.
+cosign prints the verified signatures, including the commit and tag they were built from. The same
+images, each with its own signature, are mirrored on GHCR: put `ghcr.io/honeybeartech/` in place of
+`docker.io/honeybeartech/` (releases before v0.10.1 are only on GHCR). A tag such as `0.10.0` can be moved, a
+digest can't: for production, pin the digests from the release's `images.txt` (after verifying it, below),
+for example `honeybeartech/steerhouse-backend@sha256:…`. Both registries list the same digest.
 
 To see the SBOM and the provenance:
 
 ```sh
-docker buildx imagetools inspect ghcr.io/honeybeartech/steerhouse-backend:0.10.0 --format '{{ json .SBOM }}'
-docker buildx imagetools inspect ghcr.io/honeybeartech/steerhouse-backend:0.10.0 --format '{{ json .Provenance }}'
+docker buildx imagetools inspect docker.io/honeybeartech/steerhouse-backend:0.10.0 --format '{{ json .SBOM }}'
+docker buildx imagetools inspect docker.io/honeybeartech/steerhouse-backend:0.10.0 --format '{{ json .Provenance }}'
 ```
 
 ## The release files

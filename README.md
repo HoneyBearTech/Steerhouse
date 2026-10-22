@@ -10,6 +10,14 @@
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/HoneyBearTech/Steerhouse/badge)](https://scorecard.dev/viewer/?uri=github.com/HoneyBearTech/Steerhouse)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15793/badge)](https://www.bestpractices.dev/projects/15793)
 [![OpenSSF Baseline](https://www.bestpractices.dev/projects/15793/baseline)](https://www.bestpractices.dev/projects/15793)
+[![Docker Build](https://github.com/HoneyBearTech/Steerhouse/actions/workflows/docker-build.yml/badge.svg)](https://github.com/HoneyBearTech/Steerhouse/actions/workflows/docker-build.yml)
+[![Fuzzing](https://github.com/HoneyBearTech/Steerhouse/actions/workflows/fuzz.yml/badge.svg)](https://github.com/HoneyBearTech/Steerhouse/actions/workflows/fuzz.yml)
+[![Release](https://img.shields.io/github/v/release/HoneyBearTech/Steerhouse?sort=semver)](https://github.com/HoneyBearTech/Steerhouse/releases/latest)
+[![Docker Hub](https://img.shields.io/docker/v/honeybeartech/steerhouse-backend?sort=semver&logo=docker&logoColor=white&label=Docker%20Hub)](https://hub.docker.com/r/honeybeartech/steerhouse-backend)
+[![Image size](https://img.shields.io/docker/image-size/honeybeartech/steerhouse-backend?sort=semver&logo=docker&logoColor=white&label=image%20size)](https://hub.docker.com/r/honeybeartech/steerhouse-backend)
+[![Docker pulls](https://img.shields.io/docker/pulls/honeybeartech/steerhouse-backend?logo=docker&logoColor=white)](https://hub.docker.com/r/honeybeartech/steerhouse-backend)
+[![GHCR mirror](https://img.shields.io/badge/mirror-ghcr.io-2496ED?logo=github&logoColor=white)](https://github.com/HoneyBearTech/Steerhouse/pkgs/container/steerhouse-backend)
+[![License: MIT](https://img.shields.io/github/license/HoneyBearTech/Steerhouse)](https://github.com/HoneyBearTech/Steerhouse/blob/main/LICENSE)
 
 Self-hosted web UI for running Ansible playbooks against target systems, packaged in Docker.
 

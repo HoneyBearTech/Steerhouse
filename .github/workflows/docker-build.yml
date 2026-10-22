@@ -277,7 +277,7 @@ jobs:
         # aren't needed for this, so only their dependencies start.)
         run: |
           set -euo pipefail
-          docker tag steerhouse-backend:runtime ghcr.io/honeybeartech/steerhouse-backend:ci
+          docker tag steerhouse-backend:runtime honeybeartech/steerhouse-backend:ci
           dir="$RUNNER_TEMP/monitoring"
           mkdir -p "$dir/secrets"
           cp deploy/compose.yaml "$dir/"
