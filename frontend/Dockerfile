@@ -12,7 +12,7 @@ FROM deps AS build
 COPY . .
 RUN npm run build
 
-FROM nginxinc/nginx-unprivileged:1.31-alpine@sha256:b9241c6e7b8e9a862f129d8d4199ab64b10390949a78bdd5603379b32c844083 AS runtime
+FROM nginxinc/nginx-unprivileged:1.31-alpine@sha256:b5047b9b76845eac124358373c6852377c52e4b05834a47647e955dd91cb8f1e AS runtime
 # Security fixes published since the pinned base image (the release scan fails on any fixable
 # HIGH or CRITICAL vulnerability); the image runs as its unprivileged nginx user again after.
 # A release passes its run id as SECURITY_UPDATES, so a build cache can't hand it an upgrade
