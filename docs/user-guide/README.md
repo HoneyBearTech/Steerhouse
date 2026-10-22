@@ -45,7 +45,9 @@ Users, the audit log, Workers and Notifications are under **Admin** for those wh
 tablet or phone, the **menu** button opens all of these. The project switcher picks the project you work
 in: lists show its content, and what you create goes into it. Global admins can also pick **All
 projects**, where lists name each item's project. Your user name opens your **Account** (password and
-two-factor login) and **Log out**, which ends the session in this browser.
+two-factor login), the **Theme** (Dark, Light, or Same as device, which follows your system's setting;
+remembered in this browser) and **Log out**, which ends the session in this browser. On a phone, the theme
+buttons are at the bottom of the menu.
 
 The **Dashboard** shows what is running now, recent failures and the latest runs, with shortcuts to
 **New run** and **Templates**.

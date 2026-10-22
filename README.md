@@ -1,4 +1,9 @@
-# Steerhouse
+<h1 align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/steerhouse-banner-dark.svg">
+    <img alt="Steerhouse: a bow-shaped outline around a compass needle, and the name" src="docs/images/steerhouse-banner-light.svg" width="520">
+  </picture>
+</h1>
 
 [![CI](https://github.com/HoneyBearTech/Steerhouse/actions/workflows/ci.yml/badge.svg)](https://github.com/HoneyBearTech/Steerhouse/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/HoneyBearTech/Steerhouse/actions/workflows/codeql.yml/badge.svg)](https://github.com/HoneyBearTech/Steerhouse/actions/workflows/codeql.yml)
@@ -12,6 +17,14 @@ Self-hosted web UI for running Ansible playbooks against target systems, package
 > **Runs change real systems**: every run executes `ansible-playbook` on the hosts you pick, and what it
 > changes stays changed, even if you cancel it. Start with check mode and a narrow limit. **Deletes are
 > permanent**: Steerhouse asks first, but there is no undo. Keep [backups](docs/upgrading.md#back-up).
+
+| Page | Dark | Light |
+| --- | --- | --- |
+| Dashboard | <img src="docs/images/steerhouse-dashboard-dark.png" width="400" alt="The dashboard in the dark theme: counts of playbooks, inventories, templates and credentials, then a running and a queued run, recent failures and the latest runs"> | <img src="docs/images/steerhouse-dashboard-light.png" width="400" alt="The same dashboard in the light theme"> |
+| Run output | <img src="docs/images/steerhouse-run-dark.png" width="400" alt="A running playbook's live output in the dark theme: ok lines in green, changed in yellow, an unreachable host in red, a skipped task in cyan, and the play recap"> | <img src="docs/images/steerhouse-run-light.png" width="400" alt="The same run output in the light theme"> |
+| Inventory | <img src="docs/images/steerhouse-inventory-dark.png" width="400" alt="An inventory's group diagram in the dark theme: groups with their host counts and where each came from, the static inventory or a dynamic source"> | <img src="docs/images/steerhouse-inventory-light.png" width="400" alt="The same group diagram in the light theme"> |
+
+On a phone the navigation folds into a menu: <img src="docs/images/steerhouse-dashboard-phone.png" width="180" alt="The dashboard on a phone, dark theme"> <img src="docs/images/steerhouse-run-phone.png" width="180" alt="Run output on a phone, dark theme">
 
 ## Documentation
 

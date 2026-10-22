@@ -7,6 +7,29 @@ steps when upgrading; those are listed under "Upgrading" and in [docs/upgrading.
 
 ## [Unreleased]
 
+### Added
+
+- **A light theme.** Steerhouse still opens in its dark theme; your user name in the header (or the menu
+  button on a phone) now offers **Dark**, **Light** and **Same as device**, which follows the system's setting.
+  The choice is remembered in this browser (`steerhouse-theme` in local storage) and applied before the page is
+  drawn. Run output, the code editor and the group diagram follow it too: coloured Ansible output is drawn in
+  the theme's own status colours, so it keeps its contrast on a light background.
+- **The WCAG contrast of every colour pair is tested** in both themes on every pull request
+  (`frontend/src/test/contrast.test.ts`): text and links on each surface, button text, each run status on the
+  surfaces and on its own badge, input borders and the focus ring. The browser check measures every page and
+  the sign-in screen in both themes. [Accessibility](docs/accessibility.md) lists the pairs.
+
+### Changed
+
+- **A new look.** Steerhouse has a mark, the wheelhouse seen from above (a bow-shaped outline around a compass
+  needle), in the header, on the sign-in screen, as the browser tab's icon (which follows the browser's light
+  or dark setting), as the icon when the app is added to a phone's home screen, and in the README. The accent
+  is now violet (`#a99bff` dark, `#5a3fd6` light) instead of cyan, so links and the current page no longer
+  look like Ansible's cyan "skipped". The fonts are Geist Sans and Geist Mono (SIL Open Font License 1.1),
+  served by Steerhouse itself, instead of Inter and JetBrains Mono. Text boxes, selects and outline buttons
+  have a border with 3:1 contrast. The README shows screenshots of the dashboard, run output and an inventory
+  in both themes and on a phone.
+
 ## [0.9.0] - 2026-10-21
 
 Runs show what each host did in each task and can be compared side by side. An optional compose profile runs

@@ -571,7 +571,7 @@ describe("hostile output", () => {
     const linked = await screen.findByText("see Click to continue now");
     expect(linked.querySelector("a") ?? linked.closest("a")).toBeNull(); // text only, no link
     const failed = await screen.findByText("fatal: [web2]: FAILED!");
-    expect(failed.closest("span[style]")).toBeNull(); // the next task's line keeps its own colours
+    expect(failed.closest('[class*="ansi-"]')).toBeNull(); // the next task's line keeps its own colours
     const chunk = screen.getByText(/still hidden\?/);
     expect(chunk.innerHTML).toMatch(/<\/span>\nstill hidden\?$/); // dark ends with its line
     act(() => socket.close(1000));

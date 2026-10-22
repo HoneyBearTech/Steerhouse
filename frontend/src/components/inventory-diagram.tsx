@@ -18,6 +18,7 @@ import * as React from "react";
 import { OriginBadge } from "@/components/origin-badge";
 import { Button } from "@/components/ui/button";
 import { api, ApiError, type InventoryGraph } from "@/lib/api";
+import { useTheme } from "@/lib/theme";
 import {
   ancestorsOf,
   buildDiagram,
@@ -166,6 +167,7 @@ export default function InventoryDiagram({
   const [expanded, setExpanded] = React.useState(() => initialExpanded(graph, index));
   const [hosts, setHosts] = React.useState<HostsState | null>(null);
   const roomy = useRoomy();
+  const { resolved } = useTheme();
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -275,7 +277,7 @@ export default function InventoryDiagram({
               nodes={nodes}
               edges={edges}
               nodeTypes={NODE_TYPES}
-              colorMode="dark"
+              colorMode={resolved}
               fitView
               fitViewOptions={{ padding: 0.15, maxZoom: 1 }}
               minZoom={0.1}
@@ -292,7 +294,7 @@ export default function InventoryDiagram({
               <FitOnChange signature={signature} />
               <Background gap={24} />
               <Controls showInteractive={false} />
-              {roomy && <MiniMap pannable zoomable nodeColor="var(--color-secondary)" maskColor="rgb(10 14 20 / 0.7)" />}
+              {roomy && <MiniMap pannable zoomable nodeColor="var(--color-secondary)" maskColor="color-mix(in srgb, var(--color-background) 70%, transparent)" />}
             </ReactFlow>
           </ReactFlowProvider>
         </ActionsContext.Provider>

@@ -637,7 +637,7 @@ function ApiKeysPanel({ project }: { project: ProjectSummary }) {
             <div className="flex items-start gap-2">
               <code
                 data-testid="new-api-key"
-                className="flex-1 break-all rounded-md border border-border bg-input p-2 font-mono text-xs"
+                className="flex-1 break-all rounded-md border border-border bg-field p-2 font-mono text-xs"
               >
                 {created.token}
               </code>
