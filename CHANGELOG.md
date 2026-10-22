@@ -7,6 +7,11 @@ steps when upgrading; those are listed under "Upgrading" and in [docs/upgrading.
 
 ## [Unreleased]
 
+## [0.10.1] - 2026-10-22
+
+The images are now published on Docker Hub, with GHCR as a mirror, and the README shows the project's build,
+release and image badges. Steerhouse itself is unchanged.
+
 ### Upgrading
 
 - `deploy/compose.yaml` now pulls the images from Docker Hub (`honeybeartech/steerhouse-backend` and
@@ -671,7 +676,8 @@ come with SBOM and provenance attestations; see [docs/verifying-releases.md](doc
   need the usual pull-and-restart: database migrations run on start-up. An installation still on the
   old SQLite database must run the one-time import first (see [docs/upgrading.md](docs/upgrading.md)).
 
-[Unreleased]: https://github.com/HoneyBearTech/Steerhouse/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/HoneyBearTech/Steerhouse/compare/v0.10.1...HEAD
+[0.10.1]: https://github.com/HoneyBearTech/Steerhouse/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/HoneyBearTech/Steerhouse/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/HoneyBearTech/Steerhouse/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/HoneyBearTech/Steerhouse/compare/v0.7.0...v0.8.0

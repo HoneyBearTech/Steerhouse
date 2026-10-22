@@ -32,8 +32,9 @@ project roles from their groups and logout at the provider, secret store login w
 service account, a Transit-wrapped encryption key, and a diagram of an inventory's groups. **v0.9.0**
 (October 2026) added a by-host view of each run's tasks with run-to-run comparison, an optional Prometheus and
 Grafana set-up in the production compose file, and sign-in with Microsoft Entra. **v0.10.0** (October 2026)
-gave the web UI its own look, with a new mark, a violet accent and Geist fonts, and added a light theme. The
-most recent release is the supported version.
+gave the web UI its own look, with a new mark, a violet accent and Geist fonts, and added a light theme.
+**v0.10.1** (October 2026) published the images on Docker Hub, with GHCR as a mirror. The most recent release
+is the supported version.
 
 ## Over the following year
 
