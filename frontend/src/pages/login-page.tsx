@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 
+import { Mark } from "@/components/brand";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -186,8 +187,9 @@ export function LoginPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-4">
       <Card className="w-full max-w-sm">
-        <CardHeader>
-          <h1 className="font-mono text-xl font-semibold leading-none tracking-tight text-primary">Steerhouse</h1>
+        <CardHeader className="items-center text-center">
+          <Mark className="mb-2 size-12" />
+          <h1 className="text-2xl font-semibold leading-none tracking-tight">Steerhouse</h1>
           <CardDescription>
             {needsSecondFactor
               ? "Two-factor login is on for this account."

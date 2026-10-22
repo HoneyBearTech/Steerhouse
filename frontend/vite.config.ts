@@ -23,6 +23,8 @@ export default defineConfig(({ mode }) => {
     test: {
       environment: "jsdom",
       setupFiles: ["./src/test/setup.ts"],
+      // The palette's contrast test reads index.css as text (?raw); other CSS stays stubbed out.
+      css: { include: [/index\.css/] },
       include: ["src/**/*.test.{ts,tsx}"],
       coverage: {
         provider: "v8",

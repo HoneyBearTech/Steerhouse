@@ -86,6 +86,7 @@ const OSC8 = /\u001b\]8;[^;\u0007\u001b]*;[^\u0007\u001b]*(?:\u001b\\|\u0007)/g;
 function lineToHtml(line: string): string {
   const ansiUp = new AnsiUp();
   ansiUp.url_allowlist = {}; // and never a link, whatever slips past OSC8
+  ansiUp.use_classes = true; // the 16 colours as classes, drawn in the theme's colours (index.css)
   return ansiUp.ansi_to_html(line.replace(OSC8, ""));
 }
 

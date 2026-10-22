@@ -2,17 +2,21 @@ import { ChevronDown, Menu, X } from "lucide-react";
 import * as React from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 
+import { Mark } from "@/components/brand";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/context/auth-context";
+import { setTheme, THEMES, useTheme, type Theme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
 interface NavEntry {
@@ -125,6 +129,7 @@ function AdminMenu({ entries }: { entries: NavEntry[] }) {
 function UserMenu() {
   const { user, logout, activeProject } = useAuth();
   const navigate = useNavigate();
+  const { theme } = useTheme();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -138,6 +143,15 @@ function UserMenu() {
           Signed in as <span className="text-foreground">{user?.username}</span> ({roleLabel(user, activeProject?.role)})
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <DropdownMenuLabel>Theme</DropdownMenuLabel>
+        <DropdownMenuRadioGroup value={theme} onValueChange={(value) => setTheme(value as Theme)}>
+          {THEMES.map((option) => (
+            <DropdownMenuRadioItem key={option.value} value={option.value} onSelect={(event) => event.preventDefault()}>
+              {option.label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+        <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => navigate("/account")}>Account</DropdownMenuItem>
         <DropdownMenuItem onSelect={() => logout()}>Log out</DropdownMenuItem>
       </DropdownMenuContent>
@@ -145,7 +159,28 @@ function UserMenu() {
   );
 }
 
-/** The menu below wide-desktop width (1280 px): every link, the project, the account and logging out. */
+/** The theme as a row of buttons, for the phone/tablet menu. */
+function ThemeButtons() {
+  const { theme } = useTheme();
+  return (
+    <fieldset className="flex flex-wrap items-center gap-2">
+      <legend className="float-left text-sm text-muted-foreground">Theme</legend>
+      {THEMES.map((option) => (
+        <Button
+          key={option.value}
+          variant={theme === option.value ? "secondary" : "ghost"}
+          size="sm"
+          aria-pressed={theme === option.value}
+          onClick={() => setTheme(option.value)}
+        >
+          {option.label}
+        </Button>
+      ))}
+    </fieldset>
+  );
+}
+
+/** The menu below wide-desktop width (1280 px): every link, the project, the account, the theme and logging out. */
 function MobileMenu({ main, admin, onClose }: { main: NavEntry[]; admin: NavEntry[]; onClose: () => void }) {
   const { user, logout, activeProject } = useAuth();
   return (
@@ -185,6 +220,7 @@ function MobileMenu({ main, admin, onClose }: { main: NavEntry[]; admin: NavEntr
           Log out
         </Button>
       </div>
+      <ThemeButtons />
     </nav>
   );
 }
@@ -201,7 +237,11 @@ export function AppShell() {
       <header className="border-b border-border">
         <div className="mx-auto max-w-6xl px-4 sm:px-8">
           <div className="flex h-14 items-center gap-6">
-            <Link to="/" className="font-mono text-lg text-primary">
+            <Link
+              to="/"
+              className="flex shrink-0 items-center gap-2 rounded-sm text-lg font-semibold tracking-tight text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <Mark />
               Steerhouse
             </Link>
             <nav aria-label="Main" className="hidden items-center gap-x-4 xl:flex">

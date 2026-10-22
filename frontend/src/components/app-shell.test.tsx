@@ -79,6 +79,30 @@ describe("header", () => {
     expect(document.getElementById("mobile-menu")).toBeNull();
   });
 
+  it("switches the theme from the user menu and remembers it", async () => {
+    const { user, screen } = renderApp("/runs", { routes: ROUTES });
+    await user.click(await screen.findByRole("button", { name: "admin" }));
+    expect(screen.getByRole("menuitemradio", { name: "Dark" })).toHaveAttribute("aria-checked", "true");
+    await user.click(screen.getByRole("menuitemradio", { name: "Light" }));
+    expect(document.documentElement.dataset["theme"]).toBe("light");
+    expect(localStorage.getItem("steerhouse-theme")).toBe("light");
+    // The menu stays open, so the choice can be seen and changed again.
+    expect(screen.getByRole("menuitemradio", { name: "Light" })).toHaveAttribute("aria-checked", "true");
+    await user.click(screen.getByRole("menuitemradio", { name: "Same as device" }));
+    expect(document.documentElement.dataset["theme"]).toBe("system");
+  });
+
+  it("switches the theme from the small-screen menu", async () => {
+    const { user, screen } = renderApp("/runs", { routes: ROUTES });
+    await user.click(await screen.findByRole("button", { name: "Open menu" }));
+    const theme = within(screen.getByRole("group", { name: "Theme" }));
+    expect(theme.getByRole("button", { name: "Dark" })).toHaveAttribute("aria-pressed", "true");
+    await user.click(theme.getByRole("button", { name: "Light" }));
+    expect(theme.getByRole("button", { name: "Light" })).toHaveAttribute("aria-pressed", "true");
+    expect(document.documentElement.dataset["theme"]).toBe("light");
+    expect(localStorage.getItem("steerhouse-theme")).toBe("light");
+  });
+
   it("switches between the menu button and the full nav at 1280 px", async () => {
     // jsdom has no layout, so this pins the breakpoint classes: below xl the full nav no longer fits.
     const { screen } = renderApp("/runs", { routes: ROUTES });

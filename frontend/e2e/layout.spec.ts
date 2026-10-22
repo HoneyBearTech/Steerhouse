@@ -2,7 +2,7 @@ import path from "node:path";
 
 import { expect, type Page, test } from "@playwright/test";
 
-import { resolve, type Routes } from "../src/test/api-routes";
+import { reply, resolve, type Routes } from "../src/test/api-routes";
 import {
   adminUserRow,
   channel,
@@ -110,6 +110,15 @@ async function fakeApi(page: Page, routes: Routes) {
   return unhandled;
 }
 
+/** What axe's colour-contrast rule finds on the page as it is drawn. */
+async function contrastViolations(page: Page): Promise<string[]> {
+  await page.addScriptTag({ path: path.resolve("node_modules/axe-core/axe.min.js") });
+  return page.evaluate(async () => {
+    const result = await window.axe.run(document, { runOnly: ["color-contrast"] });
+    return result.violations.flatMap((v) => v.nodes.map((n) => `${n.target.join(" ")}: ${n.failureSummary ?? ""}`));
+  });
+}
+
 async function open(page: Page, url: string) {
   await page.goto(url);
   await expect(page.locator("h1")).toBeVisible();
@@ -137,17 +146,16 @@ for (const [url] of PAGES) {
       });
     }
 
-    test("has enough colour contrast", async ({ page }) => {
+    for (const theme of ["dark", "light"]) {
+    test(`has enough colour contrast in the ${theme} theme`, async ({ page }) => {
+      await page.addInitScript((saved) => localStorage.setItem("steerhouse-theme", saved), theme);
       await fakeApi(page, LONG_ROUTES);
       await page.setViewportSize({ width: 1280, height: 900 });
       await open(page, url);
-      await page.addScriptTag({ path: path.resolve("node_modules/axe-core/axe.min.js") });
-      const violations = await page.evaluate(async () => {
-        const result = await window.axe.run(document, { runOnly: ["color-contrast"] });
-        return result.violations.flatMap((v) => v.nodes.map((n) => `${n.target.join(" ")}: ${n.failureSummary ?? ""}`));
-      });
-      expect(violations).toEqual([]);
+      expect(await page.evaluate(() => document.documentElement.dataset["theme"])).toBe(theme);
+      expect(await contrastViolations(page)).toEqual([]);
     });
+    }
 
     test("dialogs fit a phone", async ({ page }) => {
       await fakeApi(page, LONG_ROUTES);
@@ -177,6 +185,26 @@ for (const [url] of PAGES) {
     });
   });
 }
+
+test.describe("the sign-in page", () => {
+  for (const theme of ["dark", "light"]) {
+    test(`has enough colour contrast in the ${theme} theme`, async ({ page }) => {
+      await page.addInitScript((saved) => localStorage.setItem("steerhouse-theme", saved), theme);
+      await fakeApi(page, {
+        "GET /auth/me": reply(401, { detail: "Not authenticated" }),
+        "GET /auth/providers": {
+          oidc: { enabled: true, label: "Company SSO" },
+          github: { enabled: true, label: "GitHub" },
+          passkeys: { enabled: true, origin: "http://localhost:4173" },
+        },
+      });
+      await page.setViewportSize({ width: 1280, height: 900 });
+      await open(page, "/login");
+      await expect(page.getByRole("button", { name: /Company SSO/ })).toBeVisible();
+      expect(await contrastViolations(page)).toEqual([]);
+    });
+  }
+});
 
 declare global {
   interface Window {

@@ -1,42 +1,124 @@
 @import "tailwindcss";
 
+/* The palette, dark by default. public/theme.js sets <html data-theme> to "light", "dark" or
+   "system" from the switch in the account menu before the first paint; "system" follows the device.
+   src/test/contrast.test.ts checks the WCAG contrast of every pair the UI uses, in both themes.
+   Run-status colours echo Ansible's own output: green ok, yellow changed, red failed, cyan skipped.
+   The accent (primary, iris) is kept clear of all four. */
+:root {
+  color-scheme: dark;
+  --background: #0b0f16;
+  --foreground: #e6e9f0;
+  --card: #121722;
+  --card-foreground: #e6e9f0;
+  --popover: #1a2030;
+  --popover-foreground: #e6e9f0;
+  --primary: #a99bff;
+  --primary-foreground: #0b0f16;
+  --secondary: #1a2030;
+  --secondary-foreground: #cbd3e1;
+  --muted: #161b26;
+  --muted-foreground: #97a2b5;
+  --accent: #272449;
+  --accent-foreground: #c4baff;
+  --destructive: #f87171;
+  --destructive-foreground: #1a0a0a;
+  --border: #262e3e;
+  --input: #68748a;
+  --field: #1a2030;
+  --ring: #a99bff;
+  --status-ok: #4ade80;
+  --status-changed: #facc15;
+  --status-failed: #f87171;
+  --status-skipped: #38bdf8;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --background: #f5f6f9;
+  --foreground: #121722;
+  --card: #ffffff;
+  --card-foreground: #121722;
+  --popover: #ffffff;
+  --popover-foreground: #121722;
+  --primary: #5a3fd6;
+  --primary-foreground: #ffffff;
+  --secondary: #eceff4;
+  --secondary-foreground: #2b3343;
+  --muted: #eef0f4;
+  --muted-foreground: #515b6c;
+  --accent: #eeebfd;
+  --accent-foreground: #4930b8;
+  --destructive: #b21b1b;
+  --destructive-foreground: #ffffff;
+  --border: #d9dee7;
+  --input: #7a8394;
+  --field: #ffffff;
+  --ring: #5a3fd6;
+  --status-ok: #106a36;
+  --status-changed: #835204;
+  --status-failed: #b21b1b;
+  --status-skipped: #036194;
+}
+
+@media (prefers-color-scheme: light) {
+  :root[data-theme="system"] {
+    color-scheme: light;
+    --background: #f5f6f9;
+    --foreground: #121722;
+    --card: #ffffff;
+    --card-foreground: #121722;
+    --popover: #ffffff;
+    --popover-foreground: #121722;
+    --primary: #5a3fd6;
+    --primary-foreground: #ffffff;
+    --secondary: #eceff4;
+    --secondary-foreground: #2b3343;
+    --muted: #eef0f4;
+    --muted-foreground: #515b6c;
+    --accent: #eeebfd;
+    --accent-foreground: #4930b8;
+    --destructive: #b21b1b;
+    --destructive-foreground: #ffffff;
+    --border: #d9dee7;
+    --input: #7a8394;
+    --field: #ffffff;
+    --ring: #5a3fd6;
+    --status-ok: #106a36;
+    --status-changed: #835204;
+    --status-failed: #b21b1b;
+    --status-skipped: #036194;
+  }
+}
+
 @theme inline {
-  --color-background: #0a0e14;
-  --color-foreground: #e6e9ef;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-field: var(--field);
+  --color-ring: var(--ring);
+  --color-status-ok: var(--status-ok);
+  --color-status-changed: var(--status-changed);
+  --color-status-failed: var(--status-failed);
+  --color-status-skipped: var(--status-skipped);
 
-  --color-card: #12161f;
-  --color-card-foreground: #e6e9ef;
-
-  --color-popover: #161b26;
-  --color-popover-foreground: #e6e9ef;
-
-  --color-primary: #22d3ee;
-  --color-primary-foreground: #06121a;
-
-  --color-secondary: #1b2130;
-  --color-secondary-foreground: #cbd3e1;
-
-  --color-muted: #171c27;
-  --color-muted-foreground: #8b96a8;
-
-  --color-accent: #8b5cf6;
-  --color-accent-foreground: #f5f3ff;
-
-  --color-destructive: #f87171;
-  --color-destructive-foreground: #1a0a0a;
-
-  --color-border: #232a38;
-  --color-input: #1c222e;
-  --color-ring: #22d3ee;
-
-  /* Ansible CLI-style run-status colors, shared by run history / live log / host status views */
-  --color-status-ok: #4ade80;
-  --color-status-changed: #facc15;
-  --color-status-failed: #f87171;
-  --color-status-skipped: #38bdf8;
-
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-sans: "Geist Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, monospace;
 
   --radius: 0.75rem;
   --radius-sm: calc(var(--radius) - 4px);
@@ -51,7 +133,6 @@
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
-    color-scheme: dark;
   }
 }
 
@@ -73,7 +154,7 @@
     --editor-caret: var(--color-primary);
   }
   .code-editor .cm-editor {
-    @apply rounded-md border border-input bg-input font-mono text-sm;
+    @apply rounded-md border border-input bg-field font-mono text-sm;
     min-height: 12rem;
   }
   .code-editor .cm-editor.cm-focused {
@@ -150,7 +231,7 @@
   .code-editor .tok-meta,
   .code-editor .tok-typeName,
   .code-editor .tok-labelName {
-    @apply text-accent;
+    @apply text-accent-foreground;
   }
   .code-editor .tok-comment {
     @apply text-muted-foreground italic;
@@ -158,5 +239,68 @@
   .code-editor .tok-punctuation,
   .code-editor .tok-operator {
     @apply text-secondary-foreground;
+  }
+}
+
+/* Coloured run output (components/live-log-viewer.tsx): ansi_up writes the 16 terminal colours as
+   classes, drawn here in the theme's own colours so they keep their contrast in both themes. */
+@layer components {
+  .ansi-red-fg,
+  .ansi-bright-red-fg {
+    @apply text-status-failed;
+  }
+  .ansi-green-fg,
+  .ansi-bright-green-fg {
+    @apply text-status-ok;
+  }
+  .ansi-yellow-fg,
+  .ansi-bright-yellow-fg {
+    @apply text-status-changed;
+  }
+  .ansi-cyan-fg,
+  .ansi-bright-cyan-fg {
+    @apply text-status-skipped;
+  }
+  .ansi-blue-fg,
+  .ansi-bright-blue-fg,
+  .ansi-magenta-fg,
+  .ansi-bright-magenta-fg {
+    @apply text-primary;
+  }
+  .ansi-black-fg,
+  .ansi-bright-black-fg {
+    @apply text-muted-foreground;
+  }
+  .ansi-white-fg,
+  .ansi-bright-white-fg {
+    @apply text-foreground;
+  }
+  .ansi-red-bg,
+  .ansi-bright-red-bg {
+    @apply bg-status-failed/15;
+  }
+  .ansi-green-bg,
+  .ansi-bright-green-bg {
+    @apply bg-status-ok/15;
+  }
+  .ansi-yellow-bg,
+  .ansi-bright-yellow-bg {
+    @apply bg-status-changed/15;
+  }
+  .ansi-cyan-bg,
+  .ansi-bright-cyan-bg {
+    @apply bg-status-skipped/15;
+  }
+  .ansi-blue-bg,
+  .ansi-bright-blue-bg,
+  .ansi-magenta-bg,
+  .ansi-bright-magenta-bg {
+    @apply bg-primary/15;
+  }
+  .ansi-black-bg,
+  .ansi-bright-black-bg,
+  .ansi-white-bg,
+  .ansi-bright-white-bg {
+    @apply bg-secondary;
   }
 }

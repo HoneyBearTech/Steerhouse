@@ -81,6 +81,12 @@ Steerhouse's own code is MIT. Dependencies must use one of these licenses (SPDX 
   Ansible, and the backend image ships them under their own licenses and runs the tools as separate
   processes.
 
+The frontend's fonts are Geist Sans and Geist Mono (`@fontsource/geist-sans` and `@fontsource/geist-mono`,
+`OFL-1.1`), bundled into the app and served by Steerhouse, so the UI loads nothing from other sites. The
+frontend image carries their license in `/usr/share/licenses/steerhouse/third-party/`. The Steerhouse mark,
+favicon, app icons and README banner are the project's own work under its MIT license; the banner's lettering
+is Geist Sans drawn as outlines.
+
 The frontend's inventory diagram uses `@xyflow/react` (React Flow, MIT; with `@xyflow/system`, `classcat`,
 `zustand`, and the `d3-*` modules ISC or BSD-3-Clause) and `@dagrejs/dagre` (MIT, with `@dagrejs/graphlib`). They
 were checked before they were added: every package in the added tree has an allowed license, none has an

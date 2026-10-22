@@ -27,6 +27,9 @@ COPY --chmod=0755 docker/15-steerhouse-real-ip.sh /docker-entrypoint.d/15-steerh
 # The license travels with the image (the named build context "repo" is the repository root:
 # docker-compose.yml, and build-contexts in the workflows).
 COPY --from=repo LICENSE /usr/share/licenses/steerhouse/LICENSE
+# The web fonts (Geist Sans and Geist Mono) ship with their licence, the SIL Open Font License 1.1.
+COPY --from=build /app/node_modules/@fontsource/geist-sans/LICENSE /usr/share/licenses/steerhouse/third-party/geist-sans.LICENSE
+COPY --from=build /app/node_modules/@fontsource/geist-mono/LICENSE /usr/share/licenses/steerhouse/third-party/geist-mono.LICENSE
 LABEL org.opencontainers.image.title="Steerhouse frontend" \
       org.opencontainers.image.description="Steerhouse web UI, served by nginx" \
       org.opencontainers.image.source="https://github.com/HoneyBearTech/Steerhouse" \
