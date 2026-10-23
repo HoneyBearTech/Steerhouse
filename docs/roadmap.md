@@ -33,8 +33,9 @@ service account, a Transit-wrapped encryption key, and a diagram of an inventory
 (October 2026) added a by-host view of each run's tasks with run-to-run comparison, an optional Prometheus and
 Grafana set-up in the production compose file, and sign-in with Microsoft Entra. **v0.10.0** (October 2026)
 gave the web UI its own look, with a new mark, a violet accent and Geist fonts, and added a light theme.
-**v0.10.1** (October 2026) published the images on Docker Hub, with GHCR as a mirror. The most recent release
-is the supported version.
+**v0.10.1** (October 2026) published the images on Docker Hub, with GHCR as a mirror. **v0.11.0** (October
+2026) added run counts for dashboards and a Heimdall app, and fixed vault-encrypted values in hosts' vars and
+extra vars. The most recent release is the supported version.
 
 ## Over the following year
 
