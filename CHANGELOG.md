@@ -7,6 +7,11 @@ steps when upgrading; those are listed under "Upgrading" and in [docs/upgrading.
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-10-23
+
+Dashboards can show how many runs are running, queued and recently failed, with a key that can read nothing
+else, and Heimdall gets a Steerhouse app. A sudo password kept vault-encrypted in a host's vars now works.
+
 ### Added
 
 - **Run counts for dashboards**: `GET /api/stats` returns how many runs are queued and running, how many
@@ -18,6 +23,20 @@ steps when upgrading; those are listed under "Upgrading" and in [docs/upgrading.
   Steerhouse tile shows running, queued and recently failed runs, ready to install by hand or to submit to
   linuxserver/Heimdall-Apps. CI checks it the way Heimdall-Apps checks a submission
   ([integrations/heimdall](integrations/heimdall/README.md)).
+
+### Fixed
+
+- **Vault-encrypted values in a host's vars or a run's extra vars are decrypted.** They reached Ansible as
+  plain text, so an encrypted `ansible_become_password` gave the hosts the ciphertext as their sudo password,
+  which they refused. They are now passed in forms Ansible decrypts with the run's vault password. A dynamic
+  inventory source's values are still never decrypted. The Vault page's **Encrypt a value** now gives a JSON
+  entry that pastes into a run's **Extra vars** or a host's **Vars** as is; the raw encrypted text it offered
+  before wasn't valid inside JSON. The [user guide](docs/user-guide/credentials-and-secrets.md#vault-passwords)
+  shows how to give hosts a sudo password this way.
+
+### Changed
+
+- Dependencies updated: oxlint 1.89.0, @codemirror/view 6.43.15 and the Radix slot primitive 1.5.0.
 
 ## [0.10.1] - 2026-10-22
 
@@ -688,7 +707,8 @@ come with SBOM and provenance attestations; see [docs/verifying-releases.md](doc
   need the usual pull-and-restart: database migrations run on start-up. An installation still on the
   old SQLite database must run the one-time import first (see [docs/upgrading.md](docs/upgrading.md)).
 
-[Unreleased]: https://github.com/HoneyBearTech/Steerhouse/compare/v0.10.1...HEAD
+[Unreleased]: https://github.com/HoneyBearTech/Steerhouse/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/HoneyBearTech/Steerhouse/compare/v0.10.1...v0.11.0
 [0.10.1]: https://github.com/HoneyBearTech/Steerhouse/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/HoneyBearTech/Steerhouse/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/HoneyBearTech/Steerhouse/compare/v0.8.0...v0.9.0
