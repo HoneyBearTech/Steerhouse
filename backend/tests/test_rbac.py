@@ -211,7 +211,7 @@ def test_me_reports_role_and_permissions(client: TestClient) -> None:
     clients = _clients(client)
     viewer = clients["viewer"].get("/api/auth/me").json()
     assert viewer["role"] == "viewer"
-    assert viewer["permissions"] == ["content:read"]
+    assert viewer["permissions"] == ["content:read", "stats:read"]
     operator = clients["operator"].get("/api/auth/me").json()
     assert "runs:trigger" in operator["permissions"]
     assert "runs:become" not in operator["permissions"]

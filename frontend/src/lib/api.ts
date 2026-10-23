@@ -122,7 +122,7 @@ export interface ProjectMember {
   granted_by?: "github" | "oidc" | null;
 }
 
-export type ApiKeyPreset = "trigger" | "read-only";
+export type ApiKeyPreset = "trigger" | "read-only" | "stats";
 
 export interface ApiKey {
   id: number;

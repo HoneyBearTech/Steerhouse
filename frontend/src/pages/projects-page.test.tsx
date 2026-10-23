@@ -223,6 +223,32 @@ describe("projects", () => {
     expect(await screen.findByText("Already revoked")).toBeInTheDocument();
   });
 
+  it("creates a stats key for a dashboard", async () => {
+    const { api, user, screen } = renderApp("/projects", {
+      routes: {
+        "GET /projects": [summary()],
+        "GET /projects/:id/api-keys": [],
+        "POST /projects/:id/api-keys": {
+          ...apiKey({ id: 4, name: "heimdall", preset: "stats" }),
+          token: "ansd_1a2b3c4d_secret",
+        },
+      },
+    });
+    await user.click(await screen.findByRole("button", { name: "API keys" }));
+    await user.type(await screen.findByLabelText("New API key"), "heimdall");
+    await choose(user, screen.getByLabelText("Key permissions"), "stats");
+    expect(screen.getByText(/Cannot read runs or their output/)).toBeInTheDocument();
+    await user.type(screen.getByLabelText("Current password"), "my-password");
+    await user.click(screen.getByRole("button", { name: "Create key" }));
+
+    const dialog = within(await screen.findByRole("dialog"));
+    expect(dialog.getByText(/can read run counts in Default/)).toBeInTheDocument();
+    expect(api.requests("POST /projects/1/api-keys")[0]?.body).toMatchObject({
+      name: "heimdall",
+      preset: "stats",
+    });
+  });
+
   it("limits an API key to addresses, playbooks and inventories", async () => {
     const limited = apiKey({
       allowed_networks: ["203.0.113.0/24"],

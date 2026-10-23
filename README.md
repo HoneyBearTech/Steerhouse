@@ -582,11 +582,12 @@ optional Grafana alert rules for trends that Steerhouse's own notifications don'
 ## Triggering runs from CI
 
 A project admin can create an API key under **Projects → API keys**. Keys belong to one project, are shown
-once, and expire (30 days, 90 days or 1 year) or can be revoked at any time. There are two kinds:
+once, and expire (30 days, 90 days or 1 year) or can be revoked at any time. There are three kinds:
 
 - `trigger` — start runs (directly or from a run template) and read run status and output in that
   project. Never runs as root, never edits anything.
 - `read-only` — read run status and output only.
+- `stats` — read the project's run counts only (`GET /api/stats`), for a dashboard such as Heimdall.
 
 A key can also be limited to the addresses it may be used from and to the playbooks and inventories it may
 run (**Limits** on the key; changeable later without a new key).
@@ -622,8 +623,8 @@ curl -sf "$BASE/api/runs/$RUN/log?format=text" -H "Authorization: Bearer $KEY" -
 
 A key can only use the run endpoints (`GET/POST /api/runs`, `GET /api/runs/{id}`,
 `POST /api/runs/{id}/cancel`, `GET /api/runs/{id}/log`, `POST /api/run-templates/{id}/launch`, and the run
-log WebSocket `/api/runs/{id}/ws` with the same header); everything else answers `403`. A `read-only` key
-can't launch templates. Extra vars you send are not
+log WebSocket `/api/runs/{id}/ws` with the same header) and the run counts (`GET /api/stats`); everything
+else answers `403`. A `read-only` key can't launch templates, and a `stats` key can use only `GET /api/stats`. Extra vars you send are not
 readable back through a key. Keys are access control, not isolation: a `trigger` key can run any playbook in
 its project, so scope keys per project and rotate them.
 

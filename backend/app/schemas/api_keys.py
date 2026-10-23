@@ -18,7 +18,7 @@ class ApiKeyLimits(BaseModel):
 
 class ApiKeyCreate(ApiKeyLimits):
     name: str = Field(min_length=1, max_length=64, pattern=_NAME_PATTERN)
-    preset: Literal["trigger", "read-only"]
+    preset: Literal["trigger", "read-only", "stats"]
     expires_in_days: int = Field(default=90, ge=1, le=365)
     # Re-authentication: required unless SSO started this session within the last 15 minutes.
     current_password: str | None = Field(default=None, max_length=128)

@@ -28,9 +28,24 @@ codes. A running backend also serves it interactively at `/docs` and as `/openap
   state (for example deleting something still in use).
 - State-changing requests from a browser must come from the same origin (or one in `CORS_ORIGINS`).
 - API keys (see the [user guide](user-guide/projects-and-users.md#api-keys-for-ci)) reach only their
-  project's run routes; the README's [Triggering runs from CI](../README.md#triggering-runs-from-ci) shows
-  them in use.
+  project's run routes and its [run counts](#run-counts); the README's
+  [Triggering runs from CI](../README.md#triggering-runs-from-ci) shows them in use.
 - The committed description is checked against the code by a test, so it's current for each commit.
+
+### Run counts
+
+`GET /api/stats` returns how many runs are waiting and running, and how many finished in the last 24 hours,
+for a status tile on a dashboard (for example Heimdall) or a script:
+
+```json
+{"queued": 0, "running": 2, "succeeded_24h": 14, "failed_24h": 1, "workers_online": 3}
+```
+
+`failed_24h` counts failed and timed-out runs (cancelled ones are in neither count); `workers_online` is the
+number of workers seen in the last 30 seconds, which all projects share. The run counts cover the caller's
+projects: an API key's own project, or, for a person, every project they can read (`project_id=<n>` narrows
+it to one). Every API key preset may call it; a `stats` key may call nothing else. The answer holds numbers
+only, never names, hosts or output.
 
 ### Run output stream
 
