@@ -668,6 +668,7 @@ export type SecretSource =
 export interface VaultEncryptResult {
   vault_text: string;
   yaml_block: string;
+  json_value: string;
 }
 
 export interface GalaxyInstall {

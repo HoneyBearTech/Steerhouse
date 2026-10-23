@@ -495,7 +495,7 @@ export function RunTriggerPage() {
           </SelectContent>
         </Select>
         <p className="text-xs text-muted-foreground">
-          Needed only if the playbook or extra vars contain Ansible Vault-encrypted values.
+          Needed only if the playbook, the extra vars or the inventory's vars contain Ansible Vault-encrypted values.
         </p>
       </div>
 

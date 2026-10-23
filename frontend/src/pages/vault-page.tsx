@@ -260,9 +260,13 @@ function EncryptCard({ vaultPasswords }: { vaultPasswords: VaultPassword[] }) {
               value={result.yaml_block}
             />
             <CopyableOutput
-              label="For extra-vars JSON"
-              hint="Use as a plain string value in the run's Extra vars JSON."
-              value={result.vault_text}
+              label="For extra vars or host vars (JSON)"
+              hint={
+                result.json_value.startsWith('"')
+                  ? "Paste inside the { } of a run's Extra vars or a host's Vars. Needs a vault password when the run is triggered."
+                  : "Use as a value in a run's Extra vars or a host's Vars. Needs a vault password when the run is triggered."
+              }
+              value={result.json_value}
             />
           </div>
         )}

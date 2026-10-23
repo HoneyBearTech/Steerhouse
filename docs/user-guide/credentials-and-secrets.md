@@ -34,17 +34,23 @@ reason.
 
 ## Vault passwords
 
-Playbooks and extra variables can contain values encrypted with [Ansible
-Vault](https://docs.ansible.com/ansible/latest/vault_guide/index.html). **Vault → New vault password**
-stores the password that decrypts them; pick it when you start a run.
+Playbooks, extra variables and an inventory's host variables can contain values encrypted with
+[Ansible Vault](https://docs.ansible.com/ansible/latest/vault_guide/index.html). **Vault → New vault
+password** stores the password that decrypts them; pick it when you start a run.
 
 The **Vault** page also has two tools, for anyone allowed to use them:
 
 - **Encrypt a value** (operators and admins): pick a vault password, optionally a variable name, and the
-  value. You get a block to paste into playbook YAML and a string for a run's extra-vars JSON. **Copy**
-  copies either.
+  value. You get a block to paste into playbook YAML and a JSON entry for a run's extra vars or a host's
+  vars. **Copy** copies either.
 - **Decrypt a value** (admins): paste a `$ANSIBLE_VAULT;…` envelope or a whole `name: !vault |` block. The
   plaintext is shown only on this page.
+
+**A sudo password for your hosts.** Runs answer no sudo prompt themselves (by default they expect
+passwordless sudo). To give hosts a sudo password, encrypt it with the variable name
+`ansible_become_password`, paste the JSON entry into the host's **Vars** (or a run's **Extra vars**:
+only users allowed to run as admin may set it there), and pick the vault password when you start the
+run with **Run as admin (become root)**.
 
 Deleting a vault password asks first. Values encrypted with it can then only be decrypted with your own
 copy of the password.

@@ -18,6 +18,9 @@ class VaultEncryptRequest(BaseModel):
 class VaultEncryptResponse(BaseModel):
     vault_text: str
     yaml_block: str
+    # Ansible's JSON form, for a run's extra vars or a host's vars (a `"name": ...` member
+    # with a variable name)
+    json_value: str
 
 
 class VaultDecryptRequest(BaseModel):

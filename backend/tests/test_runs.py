@@ -1,3 +1,4 @@
+import base64
 import contextlib
 import glob
 import json
@@ -45,6 +46,20 @@ EXTRA_VARS_PLAYBOOK = """\
     - name: write extra var
       ansible.builtin.copy:
         content: "{{ greeting }}"
+        dest: "{{ marker_path }}"
+"""
+
+# Writes the variable's value base64-encoded: `copy` decrypts vault-formatted content itself,
+# so a marker holding the value as is would pass even when the variable is still ciphertext
+# (and ssh or sudo get that ciphertext as the password).
+VAULT_CHECK_PLAYBOOK = """\
+- hosts: all
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: write the variable's value, encoded
+      ansible.builtin.copy:
+        content: "{{ greeting | b64encode }}"
         dest: "{{ marker_path }}"
 """
 
@@ -100,7 +115,7 @@ def _create_playbook(client: TestClient, content: str, name: str = "test.yml") -
 
 
 def _create_inventory_with_host(
-    client: TestClient, marker_path: str, name: str = "test-inv"
+    client: TestClient, marker_path: str, name: str = "test-inv", host_vars: dict | None = None
 ) -> tuple[int, int]:
     inv = client.post("/api/inventories", json={"name": name})
     assert inv.status_code == 201
@@ -108,7 +123,7 @@ def _create_inventory_with_host(
 
     host = client.post(
         f"/api/inventories/{inventory_id}/hosts",
-        json={"hostname": "test-host", "vars": {"marker_path": marker_path}},
+        json={"hostname": "test-host", "vars": {"marker_path": marker_path, **(host_vars or {})}},
     )
     assert host.status_code == 201
     return inventory_id, host.json()["id"]
@@ -735,11 +750,21 @@ def test_run_decrypts_vault_var_in_playbook(client: TestClient, tmp_path) -> Non
     assert (tmp_path / "marker.txt").read_text() == "decrypted-from-playbook"
 
 
-def test_run_decrypts_raw_envelope_in_extra_vars(client: TestClient, tmp_path) -> None:
+def _vault_forms(encrypted: dict) -> dict:
+    """The forms of one encrypted value a user can paste into JSON vars."""
+    return {
+        "raw envelope": encrypted["vault_text"],
+        "json form": json.loads("{" + encrypted["json_value"] + "}")["secret_value"],
+        "yaml block": encrypted["yaml_block"],
+    }
+
+
+@pytest.mark.parametrize("form", ["raw envelope", "json form", "yaml block"])
+def test_run_decrypts_vaulted_extra_vars(client: TestClient, tmp_path, form: str) -> None:
     _login(client)
     vault_password_id = _create_vault_password(client)
     encrypted = _encrypt_with_vault(client, vault_password_id, "decrypted-from-extra-vars")
-    playbook_id = _create_playbook(client, EXTRA_VARS_PLAYBOOK, name="vault-extra-vars.yml")
+    playbook_id = _create_playbook(client, VAULT_CHECK_PLAYBOOK, name="vault-extra-vars.yml")
     inventory_id, _host_id = _create_inventory_with_host(client, str(tmp_path / "marker.txt"))
     credential_id = _create_credential(client)
 
@@ -750,14 +775,44 @@ def test_run_decrypts_raw_envelope_in_extra_vars(client: TestClient, tmp_path) -
             "inventory_id": inventory_id,
             "credential_id": credential_id,
             "vault_password_id": vault_password_id,
-            "extra_vars": {"greeting": encrypted["vault_text"]},
+            "extra_vars": {"greeting": _vault_forms(encrypted)[form]},
         },
     )
     assert create_response.status_code == 201
 
     run = _wait_for_completion(client, create_response.json()["id"])
     assert run["status"] == "success", run
-    assert (tmp_path / "marker.txt").read_text() == "decrypted-from-extra-vars"
+    marker = (tmp_path / "marker.txt").read_text()
+    assert base64.b64decode(marker).decode() == "decrypted-from-extra-vars"
+
+
+@pytest.mark.parametrize("form", ["raw envelope", "json form", "yaml block"])
+def test_run_decrypts_vaulted_host_vars(client: TestClient, tmp_path, form: str) -> None:
+    """A sudo password kept in a host's vars (ansible_become_password) reaches sudo decrypted."""
+    _login(client)
+    vault_password_id = _create_vault_password(client)
+    encrypted = _encrypt_with_vault(client, vault_password_id, "decrypted-from-host-vars")
+    playbook_id = _create_playbook(client, VAULT_CHECK_PLAYBOOK, name="vault-host-vars.yml")
+    inventory_id, _host_id = _create_inventory_with_host(
+        client, str(tmp_path / "marker.txt"), host_vars={"greeting": _vault_forms(encrypted)[form]}
+    )
+    credential_id = _create_credential(client)
+
+    create_response = client.post(
+        "/api/runs",
+        json={
+            "playbook_id": playbook_id,
+            "inventory_id": inventory_id,
+            "credential_id": credential_id,
+            "vault_password_id": vault_password_id,
+        },
+    )
+    assert create_response.status_code == 201
+
+    run = _wait_for_completion(client, create_response.json()["id"])
+    assert run["status"] == "success", run
+    marker = (tmp_path / "marker.txt").read_text()
+    assert base64.b64decode(marker).decode() == "decrypted-from-host-vars"
 
 
 def test_run_needing_vault_without_password_fails_cleanly(client: TestClient, tmp_path) -> None:

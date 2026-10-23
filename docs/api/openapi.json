@@ -7842,6 +7842,10 @@
       },
       "VaultEncryptResponse": {
         "properties": {
+          "json_value": {
+            "title": "Json Value",
+            "type": "string"
+          },
           "vault_text": {
             "title": "Vault Text",
             "type": "string"
@@ -7853,7 +7857,8 @@
         },
         "required": [
           "vault_text",
-          "yaml_block"
+          "yaml_block",
+          "json_value"
         ],
         "title": "VaultEncryptResponse",
         "type": "object"
