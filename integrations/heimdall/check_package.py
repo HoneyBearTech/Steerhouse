@@ -13,6 +13,7 @@ import struct
 import sys
 import unicodedata
 from pathlib import Path
+from xml.etree import ElementTree
 
 APP = Path(__file__).resolve().parent / "Steerhouse"
 FIELD_ORDER = [
@@ -32,6 +33,26 @@ def slug(name: str) -> str:
     text = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()
     text = re.sub(r"-+", "", text).replace("@", "at").lower()
     return re.sub(r"\s+", "", re.sub(r"[^a-z0-9\s]+", "", text))
+
+
+def svg_problem(icon: Path) -> str | None:
+    """Why the SVG isn't a plain drawing that reads the same everywhere (Heimdall sanitises SVGs,
+    and upstream's svgo pass removes the root's size), or None."""
+    try:
+        root = ElementTree.parse(icon).getroot()  # noqa: S314 - our own file, not input
+    except ElementTree.ParseError as exc:
+        return f"not well-formed XML ({exc})"
+    if root.tag.rpartition("}")[2] != "svg" or "viewBox" not in root.attrib:
+        return "the root must be <svg> with a viewBox"
+    if {"width", "height"} & set(root.attrib):
+        return "no fixed width or height on the root"
+    for element in root.iter():
+        name = element.tag.rpartition("}")[2].lower()
+        if name in ("script", "style", "foreignobject"):
+            return f"no <{name}> elements"
+        if any(attr.lower().startswith("on") for attr in element.attrib):
+            return "no event handler attributes"
+    return None
 
 
 def problems() -> list[str]:
@@ -56,8 +77,8 @@ def problems() -> list[str]:
         width, height = struct.unpack(">II", icon.read_bytes()[16:24])
         if not (100 <= width <= 300 and 100 <= height <= 300):
             found.append("a PNG icon must be 100 to 300 pixels on each side")
-    elif re.search(r"<(script|style)\b|@media|<svg[^>]*\s(width|height)=", icon.read_text()):
-        found.append("the SVG must be plain: no scripts, styles, media queries or fixed size")
+    elif problem := svg_problem(icon):
+        found.append(f"the SVG must be plain: {problem}")
 
     php = APP / f"{folder}.php"
     source = php.read_text() if php.is_file() else ""
