@@ -14,6 +14,10 @@ steps when upgrading; those are listed under "Upgrading" and in [docs/upgrading.
   their projects' counts; an API key sees its own project's. A new **stats** API key preset can read these
   counts and nothing else, so a dashboard such as Heimdall, which keeps its key in plain text, can't read
   runs or their output with it ([user guide](docs/user-guide/projects-and-users.md#a-key-for-a-dashboard-heimdall)).
+- **A Heimdall app**: `integrations/heimdall` holds an enhanced app for the Heimdall dashboard, whose
+  Steerhouse tile shows running, queued and recently failed runs, ready to install by hand or to submit to
+  linuxserver/Heimdall-Apps. CI checks it the way Heimdall-Apps checks a submission
+  ([integrations/heimdall](integrations/heimdall/README.md)).
 
 ## [0.10.1] - 2026-10-22
 

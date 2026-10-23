@@ -587,7 +587,8 @@ once, and expire (30 days, 90 days or 1 year) or can be revoked at any time. The
 - `trigger` — start runs (directly or from a run template) and read run status and output in that
   project. Never runs as root, never edits anything.
 - `read-only` — read run status and output only.
-- `stats` — read the project's run counts only (`GET /api/stats`), for a dashboard such as Heimdall.
+- `stats` — read the project's run counts only (`GET /api/stats`), for a dashboard such as Heimdall
+  (Steerhouse's Heimdall app is in [`integrations/heimdall`](integrations/heimdall/README.md)).
 
 A key can also be limited to the addresses it may be used from and to the playbooks and inventories it may
 run (**Limits** on the key; changeable later without a new key).
