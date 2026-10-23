@@ -164,9 +164,10 @@ on its Steerhouse tile. Give it a key of its own:
 1. Create a key with the **stats** preset (for example named `heimdall`). It can read the run counts and
    nothing else, which matters because dashboards usually keep the key in plain text in their own database.
 2. Under **Limits**, allow only the address the dashboard's server calls from, as Steerhouse sees it.
-3. In the dashboard, set the tile's URL to Steerhouse's address and paste the key. Heimdall sends it as
-   `Authorization: Bearer <key>`; any other tool can call `GET /api/stats` the same way (see
-   [interfaces](../interfaces.md#run-counts)).
+3. In the dashboard, set the tile's URL to Steerhouse's address and paste the key. For Heimdall, Steerhouse
+   ships the app itself in [`integrations/heimdall`](../../integrations/heimdall/README.md), with the steps
+   and a way to install it by hand. It sends the key as `Authorization: Bearer <key>`; any other tool can
+   call `GET /api/stats` the same way (see [interfaces](../interfaces.md#run-counts)).
 4. Before the key expires, **Rotate** it and paste the new one into the dashboard.
 
 The counts are the project's own, except **workers online**, which all projects share.

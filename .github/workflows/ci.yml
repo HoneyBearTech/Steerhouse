@@ -141,3 +141,30 @@ jobs:
       # Uses the runner's preinstalled Google Chrome (channel "chrome"), so no browser is downloaded.
       - name: No sideways scrolling, colour contrast, dialogs fit a phone
         run: npm run test:layout
+
+  heimdall:
+    # Not a required check: the Heimdall app in integrations/heimdall, checked the way
+    # linuxserver/Heimdall-Apps checks a submission (its app tests, PHP 8.2 lint, PSR-12).
+    name: Heimdall app package
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Layout, app.json, appid and icon
+        run: python3 integrations/heimdall/check_package.py
+      - name: PHP 8.2 syntax and PSR-12
+        env:
+          PHPCS_URL: https://github.com/PHPCSStandards/PHP_CodeSniffer/releases/download/4.0.4/phpcs.phar
+          PHPCS_SHA256: 4b010cd21d8bc8a17e2504792e3c77ef8259126f24caf7eafe7eddef1fa871e9
+          PHP_IMAGE: php:8.2-cli@sha256:2d72ff4b0cfe82e22f01f15223bc4ab4c825d318cb2e3275554cd32299a5ea50
+        run: |
+          mkdir "$RUNNER_TEMP/phpcs"
+          curl -sfL -o "$RUNNER_TEMP/phpcs/phpcs.phar" "$PHPCS_URL"
+          echo "$PHPCS_SHA256  $RUNNER_TEMP/phpcs/phpcs.phar" | sha256sum -c -
+          docker run --rm --network none -v "$PWD/integrations/heimdall:/src:ro" \
+            -v "$RUNNER_TEMP/phpcs:/tools:ro" "$PHP_IMAGE" sh -ec '
+              for f in /src/Steerhouse/*.php; do php -l "$f"; done
+              php /tools/phpcs.phar --standard=PSR12 --ignore="*.blade.php" \
+                --exclude=Squiz.Functions.MultiLineFunctionDeclaration /src/Steerhouse'
