@@ -258,12 +258,21 @@ function MembersPanel({ project }: { project: ProjectSummary }) {
   );
 }
 
-const KEY_PRESETS: ApiKeyPreset[] = ["trigger", "read-only"];
+const KEY_PRESETS: ApiKeyPreset[] = ["trigger", "read-only", "stats"];
 
 const KEY_PRESET_HELP: Record<ApiKeyPreset, string> = {
   trigger:
     "Starts runs and reads run status and output in this project. Never runs as root and never edits anything.",
   "read-only": "Reads run status and output in this project. Cannot start runs.",
+  stats:
+    "Reads only how many runs are queued, running, and succeeded or failed in the last day, for a dashboard such as Heimdall. Cannot read runs or their output.",
+};
+
+// Completes "Anyone who has it can …" in the dialog that shows a new key.
+const KEY_PRESET_CAN: Record<ApiKeyPreset, string> = {
+  trigger: "start and read runs",
+  "read-only": "read runs",
+  stats: "read run counts",
 };
 
 const KEY_EXPIRY_OPTIONS = [
@@ -630,7 +639,7 @@ function ApiKeysPanel({ project }: { project: ProjectSummary }) {
               <DialogTitle>{rotated ? "API key rotated" : "API key created"}</DialogTitle>
               <DialogDescription>
                 Copy this key now. It won&apos;t be shown again. Anyone who has it can{" "}
-                {created.preset === "trigger" ? "start and read runs" : "read runs"} in {project.name} until
+                {KEY_PRESET_CAN[created.preset]} in {project.name} until
                 it expires or is revoked.
               </DialogDescription>
             </DialogHeader>

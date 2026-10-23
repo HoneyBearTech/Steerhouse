@@ -297,7 +297,7 @@ def test_a_key_cannot_reach_any_other_endpoint(world) -> None:
         assert "API keys cannot use this endpoint" in response.json()["detail"]
 
 
-def test_a_key_is_refused_on_every_served_operation_except_the_run_routes(world) -> None:
+def test_a_key_is_refused_on_every_served_operation_except_its_routes(world) -> None:
     """Behavioural twin of the pinned-set test below: probes what the app actually
     serves (OpenAPI), so a route added later can't quietly become key-accessible."""
     a = world["a"]
@@ -313,6 +313,7 @@ def test_a_key_is_refused_on_every_served_operation_except_the_run_routes(world)
         ("GET", "/api/runs/{run_id}/artifacts/download"),
         ("GET", "/api/runs/{run_id}/artifacts/file"),
         ("POST", "/api/run-templates/{template_id}/launch"),
+        ("GET", "/api/stats"),
     }
     probed = 0
     for path, operations in app.openapi()["paths"].items():
@@ -326,7 +327,7 @@ def test_a_key_is_refused_on_every_served_operation_except_the_run_routes(world)
     assert probed > 25  # guards against the sweep silently covering nothing
 
 
-def test_only_the_run_routes_are_enabled_for_api_keys() -> None:
+def test_only_the_run_and_stats_routes_are_enabled_for_api_keys() -> None:
     enabled = set()
     for route in iter_api_routes(app):
         if any(getattr(d.call, "_allows_api_key", False) for d in _walk(route.dependant)):
@@ -342,6 +343,7 @@ def test_only_the_run_routes_are_enabled_for_api_keys() -> None:
         ("GET", "/api/runs/{run_id}/artifacts/download"),
         ("GET", "/api/runs/{run_id}/artifacts/file"),
         ("POST", "/api/run-templates/{template_id}/launch"),
+        ("GET", "/api/stats"),
     }
 
 

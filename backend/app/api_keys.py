@@ -23,7 +23,7 @@ from sqlalchemy.orm import Session
 from app.models import ApiKey, User
 
 TOKEN_PREFIX = "ansd"  # noqa: S105 - public key prefix
-KEY_PRESETS = ("trigger", "read-only")
+KEY_PRESETS = ("trigger", "read-only", "stats")
 KEY_ROLE_PREFIX = "key:"
 MAX_TOKEN_LENGTH = 200
 _LAST_USED_GRANULARITY = timedelta(minutes=1)

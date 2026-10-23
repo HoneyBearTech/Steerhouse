@@ -7,6 +7,14 @@ steps when upgrading; those are listed under "Upgrading" and in [docs/upgrading.
 
 ## [Unreleased]
 
+### Added
+
+- **Run counts for dashboards**: `GET /api/stats` returns how many runs are queued and running, how many
+  succeeded and failed in the last 24 hours, and how many workers are online, as numbers only. People see
+  their projects' counts; an API key sees its own project's. A new **stats** API key preset can read these
+  counts and nothing else, so a dashboard such as Heimdall, which keeps its key in plain text, can't read
+  runs or their output with it ([user guide](docs/user-guide/projects-and-users.md#a-key-for-a-dashboard-heimdall)).
+
 ## [0.10.1] - 2026-10-22
 
 The images are now published on Docker Hub, with GHCR as a mirror, and the README shows the project's build,

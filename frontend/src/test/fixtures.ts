@@ -48,9 +48,10 @@ export const ALL_PERMISSIONS = [
   "sources:manage",
   "notifications:manage",
   "notifications:global",
+  "stats:read",
 ];
 
-export const VIEWER_PERMISSIONS = ["content:read"];
+export const VIEWER_PERMISSIONS = ["content:read", "stats:read"];
 
 export function project(overrides: Partial<ProjectAccess> = {}): ProjectAccess {
   return { id: 1, name: "Default", role: "admin", permissions: ALL_PERMISSIONS, ...overrides };

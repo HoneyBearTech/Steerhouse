@@ -31,7 +31,7 @@ and run output (which can contain sensitive data); user accounts and sessions; t
 | Operator | Running playbooks in a project | Use another project's credentials, run as root without `runs:become`, read secret values through the API, attack the worker or other runs from inside a playbook. |
 | Project admin | Managing one project (members, sources, secrets) | Reach other projects; use a git remote, webhook or inventory source to reach internal services (SSRF) or run code in the API. |
 | Global admin | Everything | Out of scope as an attacker (break-glass account); defended against account takeover via SSO (`SSO_ALLOW_ADMIN`). |
-| API key holder (CI) | One project, a fixed preset | Exceed the preset, reach other projects, act as an admin. |
+| API key holder (CI, dashboards) | One project, a fixed preset | Exceed the preset, reach other projects, act as an admin; read more than counts with a dashboard's `stats` key. |
 | Hostile content | Nothing | A malicious git repository, inventory source response (NetBox, cloud API), playbook output or Galaxy content trying to execute code in the API, template code into runs, escape directories or exhaust resources. |
 | Compromised worker | One claimed job at a time | Claim other jobs' secrets, write to the database, persist into the next run. |
 | Network attacker between components | Nothing | Intercept outgoing traffic (webhooks, git, secret store, SSO). |
@@ -63,6 +63,7 @@ What an attacker can reach, from where, and what protects it. Each entry is deta
 | --- | --- | --- | --- |
 | Web UI and HTTP API (port 8080 → 8000) | anyone who can reach your proxy | authentication on every route, per-project authorization, Origin check, throttling, CSP, input schemas | `app/dependencies.py`, `app/permissions.py`, `app/scoping.py`, `app/routers/` |
 | Run output WebSocket | signed-in users and API keys | the same authentication and read permission, Origin check | `app/routers/runs.py` |
+| Run counts (`GET /api/stats`) | signed-in users and API keys, including dashboards' `stats` keys | the same authentication, the caller's projects only, counts only (no names, hosts or output); a `stats` key reaches no other route (`tests/test_stats.py`, `tests/test_api_keys.py`) | `app/routers/stats.py`, `app/permissions.py` |
 | Worker API (port 8001) | workers (not their runs: the egress filter refuses them) | `WORKER_TOKEN` (constant-time), per-claim tokens, size limits, not published | `app/internal_api.py`, `app/worker/egress.py` |
 | Metrics (port 8002) | Prometheus | bearer token, throttled and audited, counts only, not published | `app/metrics_api.py` |
 | Git repositories | whoever can push to a synced repository | SSRF guard, hardened git, size limits, data-only tar unpacking by the run user | `app/git_sync.py`, `app/run_worker.py` |

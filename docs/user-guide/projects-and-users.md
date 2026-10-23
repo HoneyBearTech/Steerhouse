@@ -129,6 +129,8 @@ without a user account.
      run commands in a worker slot and on the project's hosts, with the run's SSH key, like an operator:
      keep it as safe as that.
    - **read-only**: read run status and output.
+   - **stats**: read only how many of the project's runs are queued, running, and succeeded or failed in
+     the last day (`GET /api/stats`), for a dashboard. It can't read runs, their output, or anything else.
 2. Copy the key from the dialog: it's shown **once**. Send it as `Authorization: Bearer <key>`, over HTTPS.
 3. The list shows each key's status, when it was last used, and when it expires. **Revoke** (after a
    confirmation) stops a key at once.
@@ -153,6 +155,21 @@ deactivated, no longer an admin of the project, or removed from it, and works ag
 Deleting them stops their keys for good. The list says why a key is suspended, and every refused request is
 in the audit log. When someone leaves, have a remaining admin create new keys for the pipelines that need
 them.
+
+### A key for a dashboard (Heimdall)
+
+A dashboard such as [Heimdall](https://heimdall.site/) can show a project's queued, running and failed runs
+on its Steerhouse tile. Give it a key of its own:
+
+1. Create a key with the **stats** preset (for example named `heimdall`). It can read the run counts and
+   nothing else, which matters because dashboards usually keep the key in plain text in their own database.
+2. Under **Limits**, allow only the address the dashboard's server calls from, as Steerhouse sees it.
+3. In the dashboard, set the tile's URL to Steerhouse's address and paste the key. Heimdall sends it as
+   `Authorization: Bearer <key>`; any other tool can call `GET /api/stats` the same way (see
+   [interfaces](../interfaces.md#run-counts)).
+4. Before the key expires, **Rotate** it and paste the new one into the dashboard.
+
+The counts are the project's own, except **workers online**, which all projects share.
 
 The README's [Triggering runs from CI](../../README.md#triggering-runs-from-ci) has `curl` examples for
 starting runs (directly or from a [template](runs.md#run-templates)), polling, cancelling, and downloading

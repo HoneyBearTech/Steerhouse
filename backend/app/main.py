@@ -47,6 +47,7 @@ from app.routers import (
     run_templates,
     runs,
     sso,
+    stats,
     users,
     vault,
     vault_passwords,
@@ -292,6 +293,7 @@ app.include_router(
 app.include_router(users.router, prefix="/api/users", tags=["users"])
 app.include_router(audit_router.router, prefix="/api/audit", tags=["audit"])
 app.include_router(workers.router, prefix="/api/workers", tags=["workers"])
+app.include_router(stats.router, prefix="/api/stats", tags=["stats"])
 app.include_router(secret_store_router.router, prefix="/api/secret-store", tags=["secret-store"])
 app.include_router(notifications.router, prefix="/api/notifications", tags=["notifications"])
 app.include_router(

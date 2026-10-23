@@ -77,7 +77,8 @@
           "preset": {
             "enum": [
               "trigger",
-              "read-only"
+              "read-only",
+              "stats"
             ],
             "title": "Preset",
             "type": "string"
@@ -7238,6 +7239,45 @@
           "requested_seconds"
         ],
         "title": "SshCertificateInfo",
+        "type": "object"
+      },
+      "StatsOut": {
+        "description": "Counts for a status tile (a Heimdall dashboard, a script). Numbers only: no names, hosts\nor output, so a `stats` API key can read nothing else.",
+        "properties": {
+          "failed_24h": {
+            "description": "Runs that failed or timed out in the last 24 hours",
+            "title": "Failed 24H",
+            "type": "integer"
+          },
+          "queued": {
+            "description": "Runs waiting for a worker",
+            "title": "Queued",
+            "type": "integer"
+          },
+          "running": {
+            "description": "Runs in progress (including those being cancelled)",
+            "title": "Running",
+            "type": "integer"
+          },
+          "succeeded_24h": {
+            "description": "Runs that succeeded in the last 24 hours",
+            "title": "Succeeded 24H",
+            "type": "integer"
+          },
+          "workers_online": {
+            "description": "Workers seen in the last 30 seconds (shared by all projects)",
+            "title": "Workers Online",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "queued",
+          "running",
+          "succeeded_24h",
+          "failed_24h",
+          "workers_online"
+        ],
+        "title": "StatsOut",
         "type": "object"
       },
       "TargetGroup": {
@@ -19242,6 +19282,88 @@
         "summary": "Status",
         "tags": [
           "secret-store"
+        ]
+      }
+    },
+    "/api/stats": {
+      "get": {
+        "description": "Run counts in the caller's projects (an API key's own project; `project_id` narrows a\nperson's to one), and the workers online. Polled by dashboards, so it's two small queries.",
+        "operationId": "get_stats_api_stats_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "project_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "steerhouse_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Steerhouse Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Stats",
+        "tags": [
+          "stats"
         ]
       }
     },

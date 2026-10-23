@@ -49,6 +49,7 @@ class Permission(StrEnum):
     NOTIFICATIONS_MANAGE = "notifications:manage"  # one project's notification channels
     NOTIFICATIONS_GLOBAL = "notifications:global"  # global channels (ops, security, all runs)
     SOURCES_MANAGE = "sources:manage"  # one project's git sources (URL, keys, host keys)
+    STATS_READ = "stats:read"  # run and worker counts only (GET /api/stats, dashboard tiles)
 
 
 # Permissions that exist only at the global level; a project admin never gets them.
@@ -63,7 +64,7 @@ GLOBAL_ONLY = frozenset(
     }
 )
 
-_VIEWER = {Permission.CONTENT_READ}
+_VIEWER = {Permission.CONTENT_READ, Permission.STATS_READ}
 _OPERATOR = _VIEWER | {
     Permission.CONTENT_WRITE,
     Permission.SECRETS_LIST,
@@ -80,13 +81,16 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
 # What an API key may do in its one project, keyed by "key:<preset>" (the value its
 # principal carries in place of a member role; the Role enum is untouched, so member
 # APIs can never assign one). Deliberately no become, no extra_vars visibility, no writes.
+# A `stats` key reads counts only: it sits in dashboards that keep it in plain text.
 KEY_ROLE_PERMISSIONS: dict[str, set[Permission]] = {
     f"{KEY_ROLE_PREFIX}trigger": {
         Permission.CONTENT_READ,
         Permission.SECRETS_LIST,  # a run references a credential by id
         Permission.RUNS_TRIGGER,
+        Permission.STATS_READ,
     },
-    f"{KEY_ROLE_PREFIX}read-only": {Permission.CONTENT_READ},
+    f"{KEY_ROLE_PREFIX}read-only": {Permission.CONTENT_READ, Permission.STATS_READ},
+    f"{KEY_ROLE_PREFIX}stats": {Permission.STATS_READ},
 }
 
 SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
