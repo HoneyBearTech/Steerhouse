@@ -14,7 +14,13 @@ from app.schemas.vault import (
 )
 from app.scoping import get_scoped
 from app.secret_store import SecretStoreError, explain, resolve_vault_password
-from app.vault import VaultError, decrypt_vault_text, encrypt_to_vault_envelope, to_yaml_block
+from app.vault import (
+    VaultError,
+    decrypt_vault_text,
+    encrypt_to_vault_envelope,
+    to_json_value,
+    to_yaml_block,
+)
 
 router = APIRouter()
 
@@ -67,7 +73,9 @@ def encrypt(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Encryption failed: {exc}") from exc
     _audit_use(db, "vault.encrypt", actor, request, vault_password)
     return VaultEncryptResponse(
-        vault_text=envelope, yaml_block=to_yaml_block(envelope, payload.var_name)
+        vault_text=envelope,
+        yaml_block=to_yaml_block(envelope, payload.var_name),
+        json_value=to_json_value(envelope, payload.var_name),
     )
 
 

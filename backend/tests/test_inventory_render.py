@@ -4,6 +4,7 @@ import pytest
 from ansible._internal._datatag._tags import TrustedAsTemplate
 from ansible.inventory.manager import InventoryManager
 from ansible.parsing.dataloader import DataLoader
+from ansible.parsing.vault import EncryptedString
 
 from app.inventory_render import (
     group_problem,
@@ -14,6 +15,7 @@ from app.inventory_render import (
     static_problems,
 )
 from app.models import Inventory, InventoryGroup, InventoryHost
+from app.vault import encrypt_to_vault_envelope
 
 STATIC = {
     "hosts": {"web1": {"role": "web", "tmpl": "{{ 1 + 1 }}"}, "db1": {}},
@@ -98,6 +100,38 @@ def test_static_data_wins_and_source_strings_are_never_templates(tmp_path) -> No
     assert not TrustedAsTemplate.is_tagged_on(group_var)
     all_var = inventory.groups["all"].get_vars()["site"]
     assert all_var == "{{ site_tmpl }}" and not TrustedAsTemplate.is_tagged_on(all_var)
+
+
+def test_static_vaulted_vars_render_as_vault_and_source_ones_stay_text(tmp_path) -> None:
+    envelope = encrypt_to_vault_envelope("sudo-pass", "vault-pass")
+    static = {
+        "hosts": {
+            "web1": {
+                "ansible_become_password": envelope,
+                "json_form": {"__ansible_vault": envelope},
+                "nested": [{"pw": "!vault |\n  " + envelope.replace("\n", "\n  ")}],
+                "plain": "$ANSIBLE_VAULT is mentioned, nothing more",
+            }
+        },
+        "groups": {},
+    }
+    snapshot = {
+        "vars": {},
+        "static_hosts": [],
+        "hosts": {"nb1": {"pw": envelope, "json_form": {"__ansible_vault": envelope}}},
+        "groups": {},
+    }
+    inventory = load(render(merge(static, snapshot)), tmp_path)
+
+    # Decrypted with the run's vault password when used (the runs tests check the plaintext).
+    web1 = inventory.get_host("web1").get_vars()
+    for value in (web1["ansible_become_password"], web1["json_form"], web1["nested"][0]["pw"]):
+        assert isinstance(value, EncryptedString)
+    assert web1["plain"] == "$ANSIBLE_VAULT is mentioned, nothing more"
+    # A source's data is never decrypted with the run's vault password: it stays !unsafe text.
+    nb1 = inventory.get_host("nb1").get_vars()
+    assert not isinstance(nb1["pw"], EncryptedString) and nb1["pw"] == envelope
+    assert nb1["json_form"] == {"__ansible_vault": envelope}
 
 
 def test_an_unknown_target_group_is_refused() -> None:

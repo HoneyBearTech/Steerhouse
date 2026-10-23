@@ -6,6 +6,7 @@ the internal API, with a one-time token.
 """
 
 import hashlib
+from typing import Any
 
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
@@ -33,6 +34,7 @@ from app.secret_store import (
     resolve_credential,
     resolve_vault_password,
 )
+from app.vault import VAULT_JSON_KEY, vault_envelope
 
 
 def unrunnable_reason(run: Run) -> str | None:
@@ -76,13 +78,26 @@ def assert_same_project(run: Run, obj, label: str) -> None:
         raise RuntimeError(f"run {run.id}: {label} is not in the run's project")
 
 
+def _vault_json(value: Any) -> Any:
+    """Vaulted values (app.vault.vault_envelope) in Ansible's JSON form, the only one it
+    decrypts in extra vars: a plain `$ANSIBLE_VAULT;...` string would reach the hosts as is."""
+    if (envelope := vault_envelope(value)) is not None:
+        return {VAULT_JSON_KEY: envelope}
+    if isinstance(value, dict):
+        return {k: _vault_json(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_vault_json(v) for v in value]
+    return value
+
+
 def extravars(run: Run) -> dict:
     """The run's extra vars as Ansible gets them. A run by someone without runs:become also gets
     ansible_become: false: extra vars outrank every play, task and inventory `become`, so nothing
     in the playbook, the inventory or a source can turn become on either."""
+    extra = _vault_json(run.extra_vars or {})
     if run.become_blocked:
-        return {**(run.extra_vars or {}), "ansible_become": False}
-    return run.extra_vars or {}
+        return {**extra, "ansible_become": False}
+    return extra
 
 
 def run_graph(db: Session, run: Run, inventory: Inventory) -> dict:

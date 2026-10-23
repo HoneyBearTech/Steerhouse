@@ -1,3 +1,5 @@
+import json
+
 from fastapi.testclient import TestClient
 
 VAULT_HEADER = "$ANSIBLE_VAULT;1.1;AES256"
@@ -50,6 +52,11 @@ def test_encrypt_returns_envelope_and_yaml_block(client: TestClient) -> None:
     assert yaml_lines[1].strip() == VAULT_HEADER
     assert all(line.startswith(" " * 10) for line in yaml_lines[1:])
 
+    # Pastes into a JSON object as is (a raw envelope's newlines aren't valid in a JSON string).
+    assert json.loads("{" + body["json_value"] + "}") == {
+        "db_pass": {"__ansible_vault": body["vault_text"]}
+    }
+
 
 def test_encrypt_without_var_name_omits_key(client: TestClient) -> None:
     _login(client)
@@ -60,6 +67,9 @@ def test_encrypt_without_var_name_omits_key(client: TestClient) -> None:
         json={"vault_password_id": vault_password_id, "plaintext": "s3cret"},
     )
     assert response.json()["yaml_block"].splitlines()[0] == "!vault |"
+    assert json.loads(response.json()["json_value"]) == {
+        "__ansible_vault": response.json()["vault_text"]
+    }
 
 
 def test_encrypt_decrypt_round_trip_raw_envelope(client: TestClient) -> None:

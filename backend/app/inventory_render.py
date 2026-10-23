@@ -5,7 +5,9 @@ group tree, so a play's `hosts: web` matches whichever group is called web.
 Static data wins: a static host's vars override a source's per top-level key, and static group
 membership is the inventory's own. Strings that came from a source are rendered `!unsafe`:
 a template in NetBox or cloud data (`{{ lookup('pipe', ...) }}`) is never evaluated in a run.
-Static strings stay templatable, as before.
+Static strings stay templatable, as before, and a static var holding an Ansible Vault value
+(a `$ANSIBLE_VAULT;...` string or {"__ansible_vault": ...}) is rendered `!vault`, so the run's
+vault password decrypts it.
 """
 
 import copy
@@ -17,6 +19,7 @@ from ansible.parsing.utils.addresses import parse_address
 from ansible.plugins.inventory import detect_range
 
 from app.models import Inventory
+from app.vault import VAULT_JSON_KEY, vault_envelope
 
 MAX_NAME = 255
 RESERVED_GROUPS = frozenset({"all", "ungrouped"})
@@ -96,6 +99,33 @@ def mark_unsafe(value: Any) -> Any:
     return value
 
 
+class Vaulted(str):
+    """A static var's Ansible Vault envelope: rendered `!vault`. As a plain string, ansible
+    would hand the ciphertext itself to whatever uses it (a sudo password, say)."""
+
+
+def tag_vaulted(value: Any) -> Any:
+    """`value` with its vaulted values (app.vault.vault_envelope) as Vaulted. A source's
+    strings stay `!unsafe` text: their envelopes aren't decrypted."""
+    if isinstance(value, Unsafe):
+        return value
+    if isinstance(value, dict):
+        if not isinstance(value.get(VAULT_JSON_KEY), Unsafe) and (
+            envelope := vault_envelope(value)
+        ):
+            return Vaulted(envelope)
+        return {k: tag_vaulted(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [tag_vaulted(v) for v in value]
+    if envelope := vault_envelope(value):
+        return Vaulted(envelope)
+    return value
+
+
+def _tag_vars(variables: dict | None) -> dict | None:
+    return {k: tag_vaulted(v) for k, v in variables.items()} if variables else variables
+
+
 class _Dumper(yaml.SafeDumper):
     pass
 
@@ -114,6 +144,9 @@ def _represent_unsafe(dumper: yaml.SafeDumper, data: Unsafe) -> yaml.ScalarNode:
 
 
 _Dumper.add_representer(Unsafe, _represent_unsafe)
+_Dumper.add_representer(
+    Vaulted, lambda dumper, data: dumper.represent_scalar("!vault", str(data), style="|")
+)
 
 
 def static_data(inventory: Inventory) -> dict:
@@ -209,8 +242,8 @@ def render(graph: dict, target: str | None = None) -> str:
 
     block: dict = {}
     if graph["vars"]:
-        block["vars"] = graph["vars"]
-    host_block = {h: (v or None) for h, v in graph["hosts"].items() if wanted(h)}
+        block["vars"] = _tag_vars(graph["vars"])
+    host_block = {h: (_tag_vars(v) or None) for h, v in graph["hosts"].items() if wanted(h)}
     if host_block:
         block["hosts"] = host_block
     children: dict = {}
@@ -222,7 +255,7 @@ def render(graph: dict, target: str | None = None) -> str:
         if group["children"]:
             entry["children"] = dict.fromkeys(group["children"])
         if group["vars"]:
-            entry["vars"] = group["vars"]
+            entry["vars"] = _tag_vars(group["vars"])
         children[name] = entry or None
     if children:
         block["children"] = children

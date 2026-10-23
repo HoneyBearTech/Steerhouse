@@ -108,7 +108,11 @@ describe("vault", () => {
     const { api, user, screen } = renderApp("/vault", {
       routes: {
         "GET /vault-passwords": [vaultPassword()],
-        "POST /vault/encrypt": { vault_text: "$ANSIBLE_VAULT;1.1;AES256\n6162", yaml_block: "db_password: !vault |\n  $ANSIBLE_VAULT;1.1;AES256" },
+        "POST /vault/encrypt": {
+          vault_text: "$ANSIBLE_VAULT;1.1;AES256\n6162",
+          yaml_block: "db_password: !vault |\n  $ANSIBLE_VAULT;1.1;AES256",
+          json_value: '"db_password": {"__ansible_vault": "$ANSIBLE_VAULT;1.1;AES256\\n6162"}',
+        },
       },
     });
     await choose(user, await screen.findByLabelText("Vault password", { selector: "#encrypt-vault-password" }), "prod-vault");
@@ -116,7 +120,9 @@ describe("vault", () => {
     await user.type(screen.getByLabelText("Value to encrypt"), "s3cret");
     await user.click(screen.getByRole("button", { name: "Encrypt" }));
     expect(await screen.findByLabelText("For playbook YAML")).toHaveValue("db_password: !vault |\n  $ANSIBLE_VAULT;1.1;AES256");
-    expect(screen.getByLabelText("For extra-vars JSON")).toHaveValue("$ANSIBLE_VAULT;1.1;AES256\n6162");
+    expect(screen.getByLabelText("For extra vars or host vars (JSON)")).toHaveValue(
+      '"db_password": {"__ansible_vault": "$ANSIBLE_VAULT;1.1;AES256\\n6162"}',
+    );
     expect(screen.getByLabelText("Value to encrypt")).toHaveValue("");
     expect(api.requests("POST /vault/encrypt")[0]?.body).toEqual({ vault_password_id: 1, plaintext: "s3cret", var_name: "db_password" });
 
