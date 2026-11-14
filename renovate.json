@@ -1,0 +1,138 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "timezone": "America/Chicago",
+  "schedule": [
+    "before 6am on monday"
+  ],
+  "labels": [
+    "dependencies"
+  ],
+  "assignees": [
+    "HoneyBearTech"
+  ],
+  "osvVulnerabilityAlerts": true,
+  "vulnerabilityAlerts": {
+    "labels": [
+      "security"
+    ]
+  },
+  "pep621": {
+    "managerFilePatterns": [
+      "/^backend\\/pyproject\\.toml$/"
+    ],
+    "rangeStrategy": "update-lockfile"
+  },
+  "npm": {
+    "managerFilePatterns": [
+      "/^frontend\\/package\\.json$/"
+    ]
+  },
+  "dockerfile": {
+    "managerFilePatterns": [
+      "/^(backend|frontend)\\/Dockerfile$/"
+    ]
+  },
+  "docker-compose": {
+    "managerFilePatterns": [
+      "/^docker-compose\\.yml$/",
+      "/^deploy\\/compose\\.yaml$/"
+    ]
+  },
+  "github-actions": {
+    "managerFilePatterns": [
+      "/^\\.github\\/workflows\\/.*\\.ya?ml$/"
+    ]
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Digest-pinned images in workflow docker run commands and the PHP_IMAGE variable",
+      "managerFilePatterns": [
+        "/^\\.github\\/workflows\\/(ci|docker-build|docker-publish)\\.yml$/"
+      ],
+      "matchStrings": [
+        "(?m)^[ \\t]+(?:PHP_IMAGE:[ \\t]+)?(?<depName>postgres|php|prom/prometheus|grafana/grafana|openbao/openbao|aquasec/trivy):(?<currentValue>[A-Za-z0-9._-]+)@(?<currentDigest>sha256:[a-f0-9]{64})[ \\t]*$"
+      ],
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "docker"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "Backend Python packages: one pull request a week for minor and patch updates",
+      "matchManagers": [
+        "pep621"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "groupName": "Backend Python minor and patch updates"
+    },
+    {
+      "description": "Frontend npm packages: one pull request a week for minor and patch updates",
+      "matchManagers": [
+        "npm"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "groupName": "Frontend npm minor and patch updates"
+    },
+    {
+      "description": "react and react-dom must have exactly the same version (react-dom refuses to start otherwise), so they are always bumped together",
+      "matchManagers": [
+        "npm"
+      ],
+      "matchPackageNames": [
+        "react",
+        "react-dom"
+      ],
+      "groupName": "react"
+    },
+    {
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "groupName": "GitHub Actions minor and patch updates"
+    },
+    {
+      "description": "init, autobuild, analyze and upload-sarif must share one version: analyze refuses a configuration written by a different init",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchPackageNames": [
+        "github/codeql-action{,/**}"
+      ],
+      "groupName": "codeql-action"
+    },
+    {
+      "description": "Container images in the Dockerfiles, compose files and workflows: patch and digest updates together, so one image stays on one version everywhere; minor and major updates get a pull request of their own because image tags do not follow strict semver",
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchUpdateTypes": [
+        "patch",
+        "digest",
+        "pinDigest"
+      ],
+      "groupName": "Container image patch and digest updates"
+    },
+    {
+      "description": "The uv image in backend/Dockerfile and the uv version in ci.yml and fuzz.yml must be the same, so they are always bumped together",
+      "matchPackageNames": [
+        "astral-sh/uv",
+        "ghcr.io/astral-sh/uv"
+      ],
+      "groupName": "uv"
+    }
+  ]
+}
