@@ -36,11 +36,12 @@ their security updates at build time.
 - **Renovate** ([`renovate.json`](../renovate.json)) proposes updates for every manifest above on Monday
   mornings (before 6am, `America/Chicago`), and security updates as soon as an advisory appears (from
   GitHub's alerts and [OSV](https://osv.dev/)). It also covers what the workflows pin outside `uses:`: the
-  service images, the digest-pinned images in `docker run` commands, and the uv version. Patch and minor
-  updates of Python packages, npm packages and GitHub Actions merge automatically (squash) once all required
-  checks pass and the release is at least 3 days old; security fixes don't wait for that. Container images
-  (including digest updates), major versions and the `uv` group are never merged automatically: they wait
-  for the maintainer. To keep the number of pull requests down, updates are grouped (major updates, and
+  service images, the digest-pinned images in `docker run` commands, and the uv version. Renovate merges its
+  pull requests itself (squash, through GitHub's auto-merge) once all required checks pass: patch, minor and
+  major updates of Python packages, npm packages, GitHub Actions and container images alike. A new version
+  waits until it is 3 days old; security fixes and image rebuilds (a new digest under the same tag) don't
+  wait. The one exception is the `uv` group, which is never merged automatically: it waits for the
+  maintainer. To keep the number of pull requests down, updates are grouped (major updates, and
   some image updates such as Grafana's, can also fall into Renovate's built-in groups of related packages):
 
   | Updates | Pull request |

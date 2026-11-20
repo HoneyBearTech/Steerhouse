@@ -15,6 +15,9 @@ steps when upgrading; those are listed under "Upgrading" and in [docs/upgrading.
   minor updates of packages and GitHub Actions merge by themselves once the required checks pass and the
   release is 3 days old (new: Dependabot had no such wait); container images, major versions and the uv
   group wait for the maintainer ([docs/dependencies.md](docs/dependencies.md#tracking-dependencies)).
+- **Renovate now merges every update by itself**, container images and major versions included, once the
+  required checks pass and the release is 3 days old; only the uv group still waits for the maintainer
+  (replaces the limit on patch and minor updates above).
 
 ### Security
 

@@ -31,9 +31,8 @@ reasoning, and may change course. Because the code is MIT-licensed, you can alwa
 | Contributor | Anyone who opens an issue or pull request | Follow [CONTRIBUTING.md](CONTRIBUTING.md) (coding standards, tests, sign-off) and the [Code of Conduct](CODE_OF_CONDUCT.md); report vulnerabilities privately. |
 | Security reporter | Anyone who reports a vulnerability | Report privately and allow time for a fix before disclosing, as described in [SECURITY.md](SECURITY.md). |
 
-Automated tools also take part: Renovate proposes dependency updates (patch and minor updates to
-packages and GitHub Actions merge automatically once the required checks pass; container images, major
-versions and the uv group wait for the maintainer), and CI, CodeQL, fuzzing and OpenSSF Scorecard check
+Automated tools also take part: Renovate proposes dependency updates and merges them itself once the
+required checks pass (after a 3-day wait; only the uv group waits for the maintainer), and CI, CodeQL, fuzzing and OpenSSF Scorecard check
 every change.
 
 ## Access to sensitive resources
@@ -48,7 +47,7 @@ Who can change the code, releases and project settings, as of the date of this f
 | Signing version tags | the maintainer | personal SSH key |
 | The OpenSSF Best Practices badge entry | the maintainer | GitHub sign-in |
 | Security advisories and private vulnerability reports | the maintainer | GitHub |
-| Automated changes | Renovate (pull requests; it may merge patch and minor package and action updates by itself, only after the required checks pass) | the Renovate GitHub app |
+| Automated changes | Renovate (pull requests; it merges its updates by itself, only after the required checks pass; the uv group is left for the maintainer) | the Renovate GitHub app |
 
 There are no other collaborators. Workflows use the per-job `GITHUB_TOKEN`, read-only unless a job asks for
 more; the only stored secret is the Docker Hub token described below.
