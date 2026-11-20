@@ -16,6 +16,12 @@ steps when upgrading; those are listed under "Upgrading" and in [docs/upgrading.
   release is 3 days old (new: Dependabot had no such wait); container images, major versions and the uv
   group wait for the maintainer ([docs/dependencies.md](docs/dependencies.md#tracking-dependencies)).
 
+### Security
+
+- **Three backend dependencies updated to fixed versions.** dnspython 2.8.0 to 2.9.2, filelock 4.0.12 to
+  4.2.12 and pyasn1 0.6.4 to 0.6.5 (the fixes landed in 2.9.2, 4.2.1 and 0.6.5), which clears the known
+  vulnerabilities the dependency audit reported in them. Only `backend/uv.lock` changed.
+
 ## [0.11.0] - 2026-10-23
 
 Dashboards can show how many runs are running, queued and recently failed, with a key that can read nothing

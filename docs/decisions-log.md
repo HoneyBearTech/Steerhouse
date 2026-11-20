@@ -42,3 +42,20 @@ workflow only acts on Dependabot's pull requests, so it no longer runs. The owne
 image and the workflow version are always proposed together. Service images in `ci.yml` no longer join the
 GitHub Actions group, where they would have blocked its automatic merge. Two sentences in the docs were
 corrected.
+
+## 2026-11-20 - Fix the three vulnerable backend dependencies (fix-audit-deps, #60)
+
+**Decision.** dnspython (2.8.0 to 2.9.2), filelock (4.0.12 to 4.2.12) and pyasn1 (0.6.4 to 0.6.5) were
+updated in `backend/uv.lock` only, to the first versions that fix the vulnerabilities the dependency audit
+reported. No other package moved.
+
+**Why.** The backend check failed on `main` and on #59 because the audit found known vulnerabilities in these
+three indirect dependencies. Fixing them in their own small pull request kept the Renovate change separate
+and let both pass their checks.
+
+**Alternatives rejected.**
+- Refreshing the whole lock file: it would have moved many unrelated packages at once.
+- Waiting for Renovate's first run to propose the fixes: #59 couldn't pass its required checks until then.
+
+**Note.** The lock file's format number went from 3 to 5; the uv versions used in CI and in the backend
+image both read it. Review findings rejected: none.
