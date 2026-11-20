@@ -98,6 +98,9 @@
       "matchManagers": [
         "github-actions"
       ],
+      "matchDatasources": [
+        "!docker"
+      ],
       "matchUpdateTypes": [
         "minor",
         "patch"
@@ -147,11 +150,12 @@
       "automerge": true
     },
     {
-      "description": "The uv group mixes an image and a tool version: never automatic.",
+      "description": "The uv group mixes an image and a tool version: never automatic, and no release-age wait, so the image and the version in the workflows are proposed together.",
       "matchPackageNames": [
         "astral-sh/uv",
         "ghcr.io/astral-sh/uv"
       ],
+      "minimumReleaseAge": null,
       "automerge": false
     }
   ],
