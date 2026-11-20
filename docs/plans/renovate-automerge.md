@@ -52,4 +52,3 @@ Engineer, Security Officer, Auditor.
 Repository settings and branch rules (only the owner changes those), and the
 workflows under `.github/workflows` (a leftover Dependabot auto-merge workflow
 stays as it is).
-
