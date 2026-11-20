@@ -16,7 +16,8 @@
   "osvVulnerabilityAlerts": true,
   "vulnerabilityAlerts": {
     "labels": [
-      "security"
+      "security",
+      "openssf"
     ]
   },
   "pep621": {
