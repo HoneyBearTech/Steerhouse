@@ -47,3 +47,5 @@ The main [README](../README.md) lists every setting (environment variable) for d
   and the remediation policies for dependency and code-scanning findings.
 - [Roadmap](roadmap.md), [changelog](../CHANGELOG.md), [support](../SUPPORT.md), [governance](../GOVERNANCE.md),
   [contributing](../CONTRIBUTING.md) and [reporting a vulnerability](../SECURITY.md).
+- Maintenance records: the [pass map](pass-map.md) (what each piece of maintenance shipped) and the
+  [decisions log](decisions-log.md) (why).

@@ -33,9 +33,30 @@ their security updates at build time.
 
 ## Tracking dependencies
 
-- **Dependabot** proposes updates weekly for every manifest above, and security updates as soon as an
-  advisory appears. Patch and minor updates (other than Docker images) merge automatically once all checks
-  pass; Docker images and major versions wait for the maintainer.
+- **Renovate** ([`renovate.json`](../renovate.json)) proposes updates for every manifest above on Monday
+  mornings (before 6am, `America/Chicago`), and security updates as soon as an advisory appears (from
+  GitHub's alerts and [OSV](https://osv.dev/)). It also covers what the workflows pin outside `uses:`: the
+  service images, the digest-pinned images in `docker run` commands, and the uv version. Patch and minor
+  updates of Python packages, npm packages and GitHub Actions merge automatically (squash) once all required
+  checks pass and the release is at least 3 days old; security fixes don't wait for that. Container images
+  (including digest updates), major versions and the `uv` group are never merged automatically: they wait
+  for the maintainer. To keep the number of pull requests down, updates are grouped (major updates, and
+  some image updates such as Grafana's, can also fall into Renovate's built-in groups of related packages):
+
+  | Updates | Pull request |
+  | --- | --- |
+  | Backend Python packages, minor and patch | one, `Backend Python minor and patch updates` (the lockfile only; the ranges in `pyproject.toml` stay) |
+  | Frontend npm packages, minor and patch | one, `Frontend npm minor and patch updates` |
+  | `react` and `react-dom`, any version | one, `react`: they must have exactly the same version |
+  | GitHub Actions, minor and patch | one, `GitHub Actions minor and patch updates` |
+  | `github/codeql-action/*`, any version | one, `codeql-action`: `analyze` refuses a configuration written by a different `init` |
+  | Container images, patch versions and digests | one, `Container image patch and digest updates`, for the Dockerfiles, the compose files and the workflows together, so an image stays on one version everywhere |
+  | uv, any version | one, `uv`: the image in `backend/Dockerfile` and the version in `ci.yml` and `fuzz.yml` together |
+  | Container images, minor versions | one per image: image tags don't follow strict semver (a "minor" Python or PostgreSQL bump can be a new language or database version) |
+  | Major versions | one per dependency |
+
+  The `honeybeartech/steerhouse-*` images in `deploy/compose.yaml` aren't updated by Renovate; their default
+  tag moves with each release.
 - **Every pull request** is checked, and blocked on a finding, by required status checks:
   - `pip-audit` against [OSV](https://osv.dev/) (backend), which covers known vulnerabilities and packages
     reported as malicious (OpenSSF `MAL-` entries), and `npm audit` (frontend), which covers known
@@ -45,7 +66,8 @@ their security updates at build time.
     vulnerability of moderate or higher severity, or with a license outside the allowlist.
 - **Every release** scans both images with Trivy and stops if any HIGH or CRITICAL vulnerability has a
   fix available.
-- **GitHub's dependency graph** and Dependabot security alerts watch the default branch between changes.
+- **GitHub's dependency graph** and Dependabot alerts (which stay on; Renovate reads them to open its
+  security-fix pull requests) watch the default branch between changes.
 - The images carry an SBOM (SPDX) listing every package, see
   [verifying-releases.md](verifying-releases.md).
 
