@@ -40,8 +40,8 @@ their security updates at build time.
   updates of Python packages, npm packages and GitHub Actions merge automatically (squash) once all required
   checks pass and the release is at least 3 days old; security fixes don't wait for that. Container images
   (including digest updates), major versions and the `uv` group are never merged automatically: they wait
-  for the maintainer. To keep the number of pull requests down, updates are grouped (Renovate's built-in
-  groups of related packages, such as `vitest` or `tailwindcss`, apply as well):
+  for the maintainer. To keep the number of pull requests down, updates are grouped (major updates, and
+  some image updates such as Grafana's, can also fall into Renovate's built-in groups of related packages):
 
   | Updates | Pull request |
   | --- | --- |
