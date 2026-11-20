@@ -138,19 +138,17 @@
       "groupName": "uv"
     },
     {
-      "description": "Safe small updates merge by themselves once the required checks pass (what dependabot-auto-merge.yml did): patch and minor package and action updates. Container images (Dockerfiles, compose files, workflow images), digests and majors always wait for the maintainer.",
-      "matchUpdateTypes": [
-        "minor",
-        "patch"
-      ],
+      "description": "An image rebuild (a new digest under the same tag) doesn't wait: Docker Hub dates it by the tag's last push, so a tag rebuilt about weekly would restart the 3-day clock each time and never get through the Monday-only schedule. Only images: a moved tag on an Action keeps the wait.",
       "matchDatasources": [
-        "!docker"
+        "docker"
       ],
-      "minimumReleaseAge": "3 days",
-      "automerge": true
+      "matchUpdateTypes": [
+        "digest"
+      ],
+      "minimumReleaseAge": null
     },
     {
-      "description": "The uv group mixes an image and a tool version: never automatic, and no release-age wait, so the image and the version in the workflows are proposed together.",
+      "description": "The uv group is the one exception to automatic merging: it mixes an image and a tool version, so it is never merged automatically (the maintainer does it), and it has no release-age wait, so the image and the version in the workflows are proposed together.",
       "matchPackageNames": [
         "astral-sh/uv",
         "ghcr.io/astral-sh/uv"
@@ -159,7 +157,10 @@
       "automerge": false
     }
   ],
-  "automerge": false,
+  "automerge": true,
+  "automergeType": "pr",
+  "automergeStrategy": "squash",
   "platformAutomerge": true,
-  "automergeStrategy": "squash"
+  "minimumReleaseAge": "3 days",
+  "minimumReleaseAgeBehaviour": "timestamp-optional"
 }
