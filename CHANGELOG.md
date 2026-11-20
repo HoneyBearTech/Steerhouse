@@ -7,6 +7,15 @@ steps when upgrading; those are listed under "Upgrading" and in [docs/upgrading.
 
 ## [Unreleased]
 
+### Changed
+
+- **Dependency updates come from Renovate instead of Dependabot** ([`renovate.json`](renovate.json)): the
+  same manifests are watched, minor and patch updates arrive grouped (one pull request each for the backend,
+  the frontend and the GitHub Actions, and one for container image patch versions and digests). Patch and
+  minor updates of packages and GitHub Actions merge by themselves once the required checks pass and the
+  release is 3 days old, as before; container images, major versions and the uv group wait for the
+  maintainer ([docs/dependencies.md](docs/dependencies.md#tracking-dependencies)).
+
 ## [0.11.0] - 2026-10-23
 
 Dashboards can show how many runs are running, queued and recently failed, with a key that can read nothing
