@@ -114,3 +114,13 @@ requests. It grants no new permission to merge.
 left for later, outside this change: `CONTRIBUTING.md` still says Node.js 24 while CI and the frontend image
 use Node 26; a comment in `ci.yml` still calls the layout check optional, though it is required (workflow
 files are changed only by the owner).
+
+## 2026-11-27 - Node.js 26 in the contributor guide (contributing-node-26)
+
+**Decision.** Fix the first of the two follow-ups found in #69: `CONTRIBUTING.md` now names Node.js 26,
+the version CI and the frontend image use. The second follow-up, the `ci.yml` comment that still calls the
+layout check optional, is left to the owner, because workflow files are changed only by the owner.
+
+**Alternatives rejected.** Fixing both in one pull request: the workflow comment is the owner's to change.
+
+**Review findings.** None; the security review and the audit found nothing to fix.
