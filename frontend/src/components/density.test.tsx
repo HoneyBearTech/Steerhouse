@@ -1,8 +1,9 @@
-import { render, screen as page } from "@testing-library/react";
+import { render, screen as page, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import css from "@/index.css?raw";
 import { hostTask, run, runHosts } from "@/test/fixtures";
+import { PAGE_ROUTES } from "@/test/pages";
 import { renderApp } from "@/test/render";
 
 import { Table, TableCell, TableHead } from "./ui/table";
@@ -38,6 +39,39 @@ describe("compact density", () => {
     const { screen } = renderApp(path, { routes: { "GET /runs": [run()] } });
     const rows = await screen.findAllByRole("link", { name: /site\.yml/ });
     for (const row of rows) expect(row.parentElement).toHaveClass("gap-2", "compact:gap-1");
+  });
+
+  it("tightens the inventory's host list", async () => {
+    const { screen } = renderApp("/inventories/1/graph", { routes: PAGE_ROUTES });
+    const summary = (await screen.findByText("web1.example")).closest("summary");
+    expect(summary).toHaveClass("compact:min-h-6", "compact:gap-y-1", "compact:pointer-coarse:min-h-10");
+    expect(summary?.parentElement).toHaveClass("py-2", "compact:py-1");
+  });
+
+  it("tightens the host list's empty message", async () => {
+    const { screen } = renderApp("/inventories/1/graph", {
+      routes: { ...PAGE_ROUTES, "GET /inventories/:id/hosts": { total: 0, hosts: [] } },
+    });
+    expect(await screen.findByText("No hosts match.")).toHaveClass("py-2", "compact:py-1");
+  });
+
+  it("tightens the inventory page's Hosts card", async () => {
+    const { screen } = renderApp("/inventories/1", { routes: PAGE_ROUTES });
+    const heading = await screen.findByRole("heading", { level: 2, name: "Hosts" });
+    const header = heading.parentElement;
+    const content = header?.nextElementSibling;
+    expect(header).toHaveClass("compact:py-3");
+    expect(content).toHaveClass("gap-3", "compact:gap-1.5", "compact:pb-3");
+    const hostname = within(content as HTMLElement).getByText("web1.example");
+    expect(hostname.parentElement).toHaveClass("gap-1", "compact:gap-0.5");
+  });
+
+  it("tightens the audit log's cards and the gap between them", async () => {
+    const { screen } = renderApp("/audit", { routes: PAGE_ROUTES });
+    const content = (await screen.findByText("credential.create")).closest(".p-4");
+    expect(content).toHaveClass("gap-1", "compact:gap-0.5", "compact:py-2");
+    // The card, then the list of cards.
+    expect(content?.parentElement?.parentElement).toHaveClass("gap-2", "compact:gap-1");
   });
 
   it("keeps the run's status buttons at least 24 px tall, larger on touch screens", async () => {
