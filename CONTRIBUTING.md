@@ -23,7 +23,7 @@ What you need:
 - for working on the backend outside Docker: **Python 3.12** (3.12.11 or later) and
   [**uv**](https://docs.astral.sh/uv/), which installs every Python dependency from `backend/uv.lock`,
   including Ansible;
-- for the frontend: **Node.js 24** and npm, which install every package from `frontend/package-lock.json`;
+- for the frontend: **Node.js 26** and npm, which install every package from `frontend/package-lock.json`;
 - `git` and `openssh-client`, which the backend calls for git sources and runs.
 
 Dependencies come only from these lockfiles, the digest-pinned base images and the images' OS packages;
