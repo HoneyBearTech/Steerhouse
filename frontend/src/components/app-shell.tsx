@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/context/auth-context";
+import { DENSITIES, setDensity, useDensity, type Density } from "@/lib/density";
 import { isWideRoute } from "@/lib/layout";
 import { setTheme, THEMES, useTheme, type Theme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
@@ -131,6 +132,7 @@ function UserMenu() {
   const { user, logout, activeProject } = useAuth();
   const navigate = useNavigate();
   const { theme } = useTheme();
+  const density = useDensity();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -147,6 +149,19 @@ function UserMenu() {
         <DropdownMenuLabel>Theme</DropdownMenuLabel>
         <DropdownMenuRadioGroup value={theme} onValueChange={(value) => setTheme(value as Theme)}>
           {THEMES.map((option) => (
+            <DropdownMenuRadioItem key={option.value} value={option.value} onSelect={(event) => event.preventDefault()}>
+              {option.label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel>Density</DropdownMenuLabel>
+        <DropdownMenuRadioGroup
+          aria-label="Density"
+          value={density}
+          onValueChange={(value) => setDensity(value as Density)}
+        >
+          {DENSITIES.map((option) => (
             <DropdownMenuRadioItem key={option.value} value={option.value} onSelect={(event) => event.preventDefault()}>
               {option.label}
             </DropdownMenuRadioItem>
@@ -181,7 +196,28 @@ function ThemeButtons() {
   );
 }
 
-/** The menu below wide-desktop width (1280 px): every link, the project, the account, the theme and logging out. */
+/** The density as a row of buttons, for the phone/tablet menu. */
+function DensityButtons() {
+  const density = useDensity();
+  return (
+    <fieldset className="flex flex-wrap items-center gap-2">
+      <legend className="float-left text-sm text-muted-foreground">Density</legend>
+      {DENSITIES.map((option) => (
+        <Button
+          key={option.value}
+          variant={density === option.value ? "secondary" : "ghost"}
+          size="sm"
+          aria-pressed={density === option.value}
+          onClick={() => setDensity(option.value)}
+        >
+          {option.label}
+        </Button>
+      ))}
+    </fieldset>
+  );
+}
+
+/** The menu below wide-desktop width (1280 px): every link, the project, the account, the theme, the density and logging out. */
 function MobileMenu({ main, admin, onClose }: { main: NavEntry[]; admin: NavEntry[]; onClose: () => void }) {
   const { user, logout, activeProject } = useAuth();
   return (
@@ -222,6 +258,7 @@ function MobileMenu({ main, admin, onClose }: { main: NavEntry[]; admin: NavEntr
         </Button>
       </div>
       <ThemeButtons />
+      <DensityButtons />
     </nav>
   );
 }

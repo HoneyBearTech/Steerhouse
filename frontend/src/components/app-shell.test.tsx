@@ -104,6 +104,32 @@ describe("header", () => {
     expect(localStorage.getItem("steerhouse-theme")).toBe("light");
   });
 
+  it("switches the density from the user menu and remembers it", async () => {
+    const { user, screen } = renderApp("/runs", { routes: ROUTES });
+    await user.click(await screen.findByRole("button", { name: "admin" }));
+    const density = within(screen.getByRole("group", { name: "Density" }));
+    expect(density.getByRole("menuitemradio", { name: "Comfortable" })).toHaveAttribute("aria-checked", "true");
+    await user.click(density.getByRole("menuitemradio", { name: "Compact" }));
+    expect(document.documentElement.dataset["density"]).toBe("compact");
+    expect(localStorage.getItem("steerhouse-density")).toBe("compact");
+    // The menu stays open, as for the theme.
+    expect(density.getByRole("menuitemradio", { name: "Compact" })).toHaveAttribute("aria-checked", "true");
+    await user.click(density.getByRole("menuitemradio", { name: "Comfortable" }));
+    expect(document.documentElement.dataset["density"]).toBe("comfortable");
+    expect(localStorage.getItem("steerhouse-density")).toBe("comfortable");
+  });
+
+  it("switches the density from the small-screen menu", async () => {
+    const { user, screen } = renderApp("/runs", { routes: ROUTES });
+    await user.click(await screen.findByRole("button", { name: "Open menu" }));
+    const density = within(screen.getByRole("group", { name: "Density" }));
+    expect(density.getByRole("button", { name: "Comfortable" })).toHaveAttribute("aria-pressed", "true");
+    await user.click(density.getByRole("button", { name: "Compact" }));
+    expect(density.getByRole("button", { name: "Compact" })).toHaveAttribute("aria-pressed", "true");
+    expect(document.documentElement.dataset["density"]).toBe("compact");
+    expect(localStorage.getItem("steerhouse-density")).toBe("compact");
+  });
+
   it("switches between the menu button and the full nav at 1280 px", async () => {
     // jsdom has no layout, so this pins the breakpoint classes: below xl the full nav no longer fits.
     const { screen } = renderApp("/runs", { routes: ROUTES });
