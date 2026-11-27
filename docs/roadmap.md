@@ -51,6 +51,10 @@ A status check of each item below, with what is left and a suggested order, is i
 **Security and operations**
 - Running the worker's firewall updates in a small helper of their own, so the worker can drop `NET_ADMIN`.
 - Single sign-on checked against more real providers.
+- The SSH keys a run will install, shown before it starts: when a run's or a saved template's extra vars name
+  a GitHub user or a `.keys` URL (as `ansible.posix.authorized_key` takes), the run form lists each key's
+  type, `SHA256:` fingerprint and comment, so a mistyped user name is caught before the wrong keys land in
+  `authorized_keys`. Public keys aren't secrets, so this doesn't change the rule below on stored secrets.
 
 **Integrations**
 - More dynamic-inventory plugins out of the box, and more notification services where people ask for them (Already shipping: AWS and
