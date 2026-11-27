@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { FakeWebSocket } from "@/test/fake-websocket";
 import { inventory, playbook, run, viewerUser } from "@/test/fixtures";
+import { PAGE_ROUTES } from "@/test/pages";
 import { renderApp } from "@/test/render";
 
 const ROUTES = { "GET /users": [], "GET /runs": [run()], "GET /playbooks": [playbook()], "GET /inventories": [inventory()], "GET /run-templates": [], "GET /credentials": [] };
@@ -136,5 +137,22 @@ describe("run output", () => {
     const recap = screen.getByText("PLAY RECAP ****").parentElement!;
     expect(recap).toHaveClass("whitespace-pre-wrap");
     expect(recap.textContent).toContain("****\nweb1");
+  });
+});
+
+describe("page width", () => {
+  // jsdom has no layout, so this pins the classes that apply from 1536 px (2xl).
+  it("widens list pages and the header on wide screens, and keeps forms at the normal width", async () => {
+    const { user, screen } = renderApp("/runs", { routes: PAGE_ROUTES });
+    await screen.findByRole("heading", { level: 1, name: "Runs" });
+    const header = screen.getByRole("banner").firstElementChild;
+    expect(screen.getByRole("main")).toHaveClass("max-w-6xl", "2xl:max-w-[90rem]");
+    expect(header).toHaveClass("max-w-6xl", "2xl:max-w-[90rem]");
+
+    await user.click(screen.getByRole("link", { name: "New run" }));
+    await screen.findByRole("heading", { level: 1, name: "New run" });
+    expect(screen.getByRole("main")).toHaveClass("max-w-6xl");
+    expect(screen.getByRole("main")).not.toHaveClass("2xl:max-w-[90rem]");
+    expect(header).toHaveClass("2xl:max-w-[90rem]");
   });
 });

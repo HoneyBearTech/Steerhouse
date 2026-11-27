@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/context/auth-context";
+import { isWideRoute } from "@/lib/layout";
 import { setTheme, THEMES, useTheme, type Theme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
@@ -228,6 +229,8 @@ function MobileMenu({ main, admin, onClose }: { main: NavEntry[]; admin: NavEntr
 export function AppShell() {
   const { user, activeProjectId } = useAuth();
   const { main, admin } = useNavEntries();
+  // From the address, not the lazily loaded page, so nothing jumps once the page arrives.
+  const wide = isWideRoute(useLocation().pathname);
   const [menuOpen, setMenuOpen] = React.useState(false);
   const isAdmin = user?.role === "admin";
   const hasNoProject = !!user && !isAdmin && user.projects.length === 0;
@@ -235,7 +238,8 @@ export function AppShell() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border">
-        <div className="mx-auto max-w-6xl px-4 sm:px-8">
+        {/* Always the wide width on wide screens, so the menu stays put between pages. */}
+        <div className="mx-auto max-w-6xl px-4 sm:px-8 2xl:max-w-[90rem]">
           <div className="flex h-14 items-center gap-6">
             <Link
               to="/"
@@ -273,7 +277,7 @@ export function AppShell() {
           {menuOpen && <MobileMenu main={main} admin={admin} onClose={() => setMenuOpen(false)} />}
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-4 py-6 sm:p-8">
+      <main className={cn("mx-auto max-w-6xl px-4 py-6 sm:p-8", wide && "2xl:max-w-[90rem]")}>
         {hasNoProject ? (
           <div className="flex flex-col gap-2">
             <h1 className="text-xl font-semibold">No project yet</h1>
