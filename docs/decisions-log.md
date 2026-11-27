@@ -95,3 +95,22 @@ owner makes. The other items are smaller and independent of it.
 smaller work and needs an owner-made workflow change first.
 
 **Review findings.** None declined.
+
+## 2026-11-27 - The repo's guidelines file (guidelines-file)
+
+**Decision.** Add the repo's guidelines file at the root, under the same file name the other HoneyBearTech
+repositories use. It names the 9 required checks, the commands CI runs and the house rules, and links to
+the editor instruction files under `.github/` for coding detail instead of copying them.
+
+**Why.** The team reads a repository's merge rules and required checks from this file; Steerhouse had none.
+
+**Merging.** The file records how merging works today: Renovate merges its own pull requests once every
+required check passes, except the uv group; the owner merges everything else, including the team's pull
+requests. It grants no new permission to merge.
+
+**Alternatives rejected.** Copying the editor instruction files into it (two copies would drift apart).
+
+**Review findings.** None declined; the security review and the audit found nothing to fix. Noticed and
+left for later, outside this change: `CONTRIBUTING.md` still says Node.js 24 while CI and the frontend image
+use Node 26; a comment in `ci.yml` still calls the layout check optional, though it is required (workflow
+files are changed only by the owner).
