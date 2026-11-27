@@ -14,14 +14,14 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
 function TableHead({ className, ...props }: React.ComponentProps<"th">) {
   return (
     <th
-      className={cn("border-b border-border bg-muted/40 px-3 py-2 text-left font-medium", className)}
+      className={cn("border-b border-border bg-muted/40 px-3 py-2 text-left font-medium compact:py-1", className)}
       {...props}
     />
   );
 }
 
 function TableCell({ className, ...props }: React.ComponentProps<"td">) {
-  return <td className={cn("border-b border-border px-3 py-2 align-top", className)} {...props} />;
+  return <td className={cn("border-b border-border px-3 py-2 align-top compact:py-1", className)} {...props} />;
 }
 
 export { Table, TableHead, TableCell };
