@@ -39,6 +39,9 @@ extra vars. The most recent release is the supported version.
 
 ## Over the following year
 
+A status check of each item below, with what is left and a suggested order, is in
+[reports/2026-11-27-roadmap-open-items.md](reports/2026-11-27-roadmap-open-items.md) (November 2026).
+
 **Authoring**
 - More from the editor: completion of module names and options, and ansible-lint's fixes offered as edits.
 
@@ -50,7 +53,8 @@ extra vars. The most recent release is the supported version.
 - Single sign-on checked against more real providers.
 
 **Integrations**
-- More dynamic-inventory plugins out of the box, and more notification services where people ask for them.
+- More dynamic-inventory plugins out of the box, and more notification services where people ask for them (Already shipping: AWS and
+  Proxmox inventories; email, Pushbullet, Pushover, ntfy, Gotify, Discord, Slack, Teams and webhook alerts.)
 
 ## What Steerhouse will not do
 
