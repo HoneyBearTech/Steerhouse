@@ -23,11 +23,12 @@ import {
 } from "../src/test/fixtures";
 import { baseRoutes, PAGE_ROUTES, PAGES } from "../src/test/pages";
 
-// Every page at phone, tablet, laptop and desktop widths, filled with the long names, e-mail
+// Every page at phone, tablet, laptop, desktop and wide-screen widths, filled with the long names, e-mail
 // addresses and URLs real inventories have: nothing may scroll sideways, text must keep its contrast,
 // and every "New/Add" (and "Edit reference", "Move to ...") dialog must fit a small phone with its buttons in reach.
 
-const WIDTHS = [375, 768, 1024, 1280];
+const WIDTHS = [375, 768, 1024, 1280, 1920];
+const DENSITIES = ["comfortable", "compact"];
 const PHONE = { width: 375, height: 667 };
 const LONG = "production-europe-west-datacenter-frankfurt-primary";
 
@@ -84,6 +85,17 @@ const LONG_ROUTES: Routes = {
   "GET /users": [adminUserRow({ username: "a-very-long-username-for-layout", email: `someone.with.a.long.address@${LONG}.example.com`, sso_linked: true, totp_enabled: true })],
   "GET /notifications/channels": [channel({ name: "Webhook", kind: "webhook", target: `https://hooks.${LONG}.example.com/services/T000/B000/XXXXXXXXXXXXXXXXXXXXXXXX` })],
 };
+
+/** Chooses the list density, as the account menu would, before the page loads. */
+async function chooseDensity(page: Page, density: string) {
+  await page.addInitScript((saved) => localStorage.setItem("steerhouse-density", saved), density);
+}
+
+/** Whether public/theme.js applied the chosen density (comfortable leaves the page unmarked). */
+async function expectDensity(page: Page, density: string) {
+  const applied = await page.evaluate(() => document.documentElement.dataset["density"] ?? "comfortable");
+  expect(applied).toBe(density);
+}
 
 /** Serves the fake API to the page; returns the requests nothing answered. */
 async function fakeApi(page: Page, routes: Routes) {
@@ -147,14 +159,20 @@ for (const [url] of PAGES) {
     }
 
     for (const theme of ["dark", "light"]) {
-    test(`has enough colour contrast in the ${theme} theme`, async ({ page }) => {
-      await page.addInitScript((saved) => localStorage.setItem("steerhouse-theme", saved), theme);
-      await fakeApi(page, LONG_ROUTES);
-      await page.setViewportSize({ width: 1280, height: 900 });
-      await open(page, url);
-      expect(await page.evaluate(() => document.documentElement.dataset["theme"])).toBe(theme);
-      expect(await contrastViolations(page)).toEqual([]);
-    });
+      for (const width of [1280, 1920]) {
+        for (const density of DENSITIES) {
+          test(`has enough colour contrast in the ${theme} theme at ${width} px, ${density}`, async ({ page }) => {
+            await page.addInitScript((saved) => localStorage.setItem("steerhouse-theme", saved), theme);
+            await chooseDensity(page, density);
+            await fakeApi(page, LONG_ROUTES);
+            await page.setViewportSize({ width, height: 900 });
+            await open(page, url);
+            expect(await page.evaluate(() => document.documentElement.dataset["theme"])).toBe(theme);
+            await expectDensity(page, density);
+            expect(await contrastViolations(page)).toEqual([]);
+          });
+        }
+      }
     }
 
     test("dialogs fit a phone", async ({ page }) => {
@@ -264,13 +282,17 @@ test.describe("the run's results by host", () => {
     }),
   };
 
-  for (const width of [375, 1280]) {
-    test(`keeps the page from scrolling sideways at ${width} px`, async ({ page }) => {
-      await fakeApi(page, ROUTES);
-      await page.setViewportSize({ width, height: 800 });
-      await open(page, "/runs/7?view=hosts");
-      await expect(page.getByRole("columnheader").nth(1)).toBeVisible();
-      expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
-    });
+  for (const width of [375, 1280, 1920]) {
+    for (const density of DENSITIES) {
+      test(`keeps the page from scrolling sideways at ${width} px, ${density}`, async ({ page }) => {
+        await chooseDensity(page, density);
+        await fakeApi(page, ROUTES);
+        await page.setViewportSize({ width, height: 800 });
+        await open(page, "/runs/7?view=hosts");
+        await expectDensity(page, density);
+        await expect(page.getByRole("columnheader").nth(1)).toBeVisible();
+        expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
+      });
+    }
   }
 });
