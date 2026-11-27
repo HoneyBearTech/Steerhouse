@@ -120,7 +120,7 @@ jobs:
           diff -r "$RUNNER_TEMP/dist-first" dist
 
   layout:
-    # Not a required check (yet): every page at 375/768/1024/1280 px in Chrome with a faked API.
+    # A required check: every page at 375/768/1024/1280 px in Chrome with a faked API.
     name: Layout + contrast (browser)
     runs-on: ubuntu-latest
     # Normally ~2 min.
