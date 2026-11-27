@@ -7,6 +7,17 @@ steps when upgrading; those are listed under "Upgrading" and in [docs/upgrading.
 
 ## [Unreleased]
 
+### Added
+
+- **Wider list pages on wide screens.** On screens 1536 px and wider, the runs list, a run's page, an
+  inventory's page and group graph, and the audit log use up to 1440 px instead of about 1150 px, and the
+  header always does. Forms and other pages keep their width.
+- **A Compact density.** The account menu (or the menu button on a phone or tablet) has a **Density** choice:
+  Comfortable, the default, or Compact, which tightens the spacing of the run's per-host grid and compare
+  view, the host lists, the runs list and the audit log. It is remembered in this browser
+  ([user guide](docs/user-guide/README.md#the-header)). The status buttons in the per-host grid are now at
+  least 24 px tall.
+
 ### Changed
 
 - **Dependency updates come from Renovate instead of Dependabot** ([`renovate.json`](renovate.json)): the
