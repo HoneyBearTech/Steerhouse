@@ -34,6 +34,12 @@ describe("compact density", () => {
     expect(row.querySelector(".p-4")).toHaveClass("compact:py-2");
   });
 
+  it.each(["/runs", "/"])("tightens the gap between run rows on %s", async (path) => {
+    const { screen } = renderApp(path, { routes: { "GET /runs": [run()] } });
+    const rows = await screen.findAllByRole("link", { name: /site\.yml/ });
+    for (const row of rows) expect(row.parentElement).toHaveClass("gap-2", "compact:gap-1");
+  });
+
   it("keeps the run's status buttons at least 24 px tall, larger on touch screens", async () => {
     const { screen } = renderApp("/runs/7?view=hosts", {
       routes: {
