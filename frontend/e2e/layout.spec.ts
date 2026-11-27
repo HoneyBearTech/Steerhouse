@@ -140,22 +140,26 @@ async function open(page: Page, url: string) {
 for (const [url] of PAGES) {
   test.describe(url, () => {
     for (const width of WIDTHS) {
-      test(`fits ${width} px`, async ({ page }) => {
-        const unhandled = await fakeApi(page, LONG_ROUTES);
-        await page.setViewportSize({ width, height: 900 });
-        await open(page, url);
-        const sideways = await page.evaluate(() => {
-          const root = document.documentElement;
-          // (The diagram's canvas clips what lies beyond its own box: only the box itself counts.)
-          const out = [...document.querySelectorAll("body *")]
-            .filter((el) => !el.parentElement?.closest("[data-diagram]"))
-            .filter((el) => el.getBoundingClientRect().right > root.clientWidth + 1)
-            .map((el) => `${el.tagName.toLowerCase()} "${(el.textContent ?? "").trim().slice(0, 40)}"`);
-          return { overflow: root.scrollWidth - root.clientWidth, out: out.slice(0, 5) };
+      for (const density of DENSITIES) {
+        test(`fits ${width} px, ${density}`, async ({ page }) => {
+          await chooseDensity(page, density);
+          const unhandled = await fakeApi(page, LONG_ROUTES);
+          await page.setViewportSize({ width, height: 900 });
+          await open(page, url);
+          await expectDensity(page, density);
+          const sideways = await page.evaluate(() => {
+            const root = document.documentElement;
+            // (The diagram's canvas clips what lies beyond its own box: only the box itself counts.)
+            const out = [...document.querySelectorAll("body *")]
+              .filter((el) => !el.parentElement?.closest("[data-diagram]"))
+              .filter((el) => el.getBoundingClientRect().right > root.clientWidth + 1)
+              .map((el) => `${el.tagName.toLowerCase()} "${(el.textContent ?? "").trim().slice(0, 40)}"`);
+            return { overflow: root.scrollWidth - root.clientWidth, out: out.slice(0, 5) };
+          });
+          expect(sideways, `scrolls sideways at ${width} px, ${density}`).toEqual({ overflow: 0, out: [] });
+          expect(unhandled).toEqual([]);
         });
-        expect(sideways, `scrolls sideways at ${width} px`).toEqual({ overflow: 0, out: [] });
-        expect(unhandled).toEqual([]);
-      });
+      }
     }
 
     for (const theme of ["dark", "light"]) {
