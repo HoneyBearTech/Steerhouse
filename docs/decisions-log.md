@@ -80,3 +80,18 @@ each manual exception gets its own pull request.
 **Review findings.** Fixed: stale docs that still promised a manual review or
 named Dependabot, and (where it applied) exceptions that sat inside the update
 group. None declined.
+
+## 2026-11-27 - Status check of the open roadmap items (roadmap-open-items)
+
+**Decision.** The roadmap's five open items stay as they are. A status report records what exists, what is
+left and a suggested order: further inventory plugins and alert services first (when asked for), then denser
+tables, editor completion, real-provider sign-in checks, and the firewall helper last.
+
+**Why.** The firewall helper is the largest and riskiest change: it moves the boundary that keeps runs away
+from the API, changes the compose files and the upgrade steps, and needs a CI workflow update that only the
+owner makes. The other items are smaller and independent of it.
+
+**Alternatives rejected.** Starting with the firewall helper for its security value: it would hold up
+smaller work and needs an owner-made workflow change first.
+
+**Review findings.** None declined.
