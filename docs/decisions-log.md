@@ -124,3 +124,27 @@ layout check optional, is left to the owner, because workflow files are changed 
 **Alternatives rejected.** Fixing both in one pull request: the workflow comment is the owner's to change.
 
 **Review findings.** None; the security review and the audit found nothing to fix.
+
+## 2026-11-28 - Denser tables and wider list pages (denser-tables)
+
+**Decision.** "Denser" means both: list pages use more of a wide screen, and a Comfortable / Compact
+choice tightens spacing. Only the pages that show long lists widen (`/runs`, `/runs/:id`,
+`/inventories/:id`, `/inventories/:id/graph`, `/audit`), from 1,536px up, to 90rem; the header always uses
+that width at that size so it never moves between pages. The frame picks the width from the address, so
+nothing jumps after a page loads. Compact is a data attribute on the page, set before it draws by the
+existing theme script, and read by one CSS variant; Comfortable stays the default.
+
+**Why.** Most long lists are rows and cards, not the shared table component, so a table-only setting
+would have changed almost nothing. Forms and settings read badly when stretched, so they keep their width.
+
+**Alternatives rejected.** Widening every page (stretches forms); widening only the run page's host tab
+(the page would change width when switching tabs); a 96rem cap (no margin left at 1,536px); a header that
+follows each page's width (the menu would jump); loading long lists in parts (needs a server change for
+the runs list; its own job if lists get slow); a virtual-list library (a new dependency for no measured
+problem).
+
+**Review findings.** Plan review: which pages widen, the header jump, the inventory page's own Hosts card,
+the run grid's status buttons under 24px, empty audit test data and the before-paint script's placement -
+all folded into the plan. Audit: Compact was not checked for sideways scrolling on every page - fixed.
+QA: unit tests missing for some Compact lists - added. Declined: a unit test for the theme script failing
+to read storage (that script has no unit tests; the browser checks confirm it applies the choice).
