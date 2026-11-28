@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* compact: applies while the account menu's Density is Compact (<html data-density="compact">,
+   lib/density.ts). It only tightens padding and gaps. :where keeps the specificity of one class. */
+@custom-variant compact (&:where([data-density="compact"] *));
+
 /* The palette, dark by default. public/theme.js sets <html data-theme> to "light", "dark" or
    "system" from the switch in the account menu before the first paint; "system" follows the device.
    src/test/contrast.test.ts checks the WCAG contrast of every pair the UI uses, in both themes.

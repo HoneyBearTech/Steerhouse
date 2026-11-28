@@ -22,8 +22,8 @@ export function RunRow({ run }: { run: Run }) {
   return (
     <Link to={`/runs/${run.id}`} className="group block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
       <Card className="transition-colors duration-150 group-hover:border-primary/50">
-        <CardContent className="flex items-center gap-3 p-4">
-          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+        <CardContent className="flex items-center gap-3 p-4 compact:py-2">
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5 compact:gap-0.5">
             <div className="flex flex-wrap items-baseline gap-x-2">
               <span className="font-mono text-xs text-muted-foreground">#{run.id}</span>
               <span className="font-medium wrap-anywhere">

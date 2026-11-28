@@ -36,7 +36,7 @@ export function RunsPage() {
       {loading && <p className="text-sm text-muted-foreground">Loading…</p>}
       {!loading && runs.length === 0 && <p className="text-sm text-muted-foreground">No runs yet.</p>}
 
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2 compact:gap-1">
         {runs.map((run) => (
           <RunRow key={run.id} run={run} />
         ))}

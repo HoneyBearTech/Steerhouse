@@ -23,12 +23,14 @@ bugs: please report them in [GitHub Issues](https://github.com/HoneyBearTech/Ste
   and shows a visible focus ring; dialogs take focus, keep it inside while open, close with Escape and
   return focus to the control that opened them; selects open and choose with the keyboard. The
   focus-return behaviour has a regression test.
-- **Small screens** are checked on every pull request in the same browser run, at 375, 768, 1024 and
-  1280 px wide with long names, e-mail addresses and URLs: no page may scroll sideways, and every "New"
+- **Small screens** are checked on every pull request in the same browser run, at 375, 768, 1024, 1280 and
+  1920 px wide with long names, e-mail addresses and URLs: no page may scroll sideways, and every "New"
   or "Add" dialog must fit a 375 × 667 phone screen (scrolling inside itself when it is taller) with its
-  buttons in reach. Below 1280 px the navigation moves into a menu button.
+  buttons in reach. Below 1280 px the navigation moves into a menu button. Colour contrast and the run's
+  per-host grid are also checked at 1920 px and with the Compact density.
 - **Touch targets** are at least 24 × 24 px (WCAG 2.2, 2.5.8). On touch screens, small buttons, selects
-  and menu links grow to about 40 px. Links inside a sentence are the usual exception.
+  and menu links grow to about 40 px. Links inside a sentence are the usual exception. The account menu's
+  **Compact** density only tightens the space around rows; controls keep these sizes.
 - **The code editor** (playbooks, inventory source configs, Galaxy requirements) is a labelled multi-line
   text box that doesn't capture Tab, so keyboard users can always move on; read-only text is announced as
   read-only and can still be selected. Check results are a list with headings and a live summary, and

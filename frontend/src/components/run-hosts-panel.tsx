@@ -331,7 +331,7 @@ export function RunHostsPanel({
                           {cell ? (
                             <button
                               type="button"
-                              className="rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              className="min-h-6 rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring pointer-coarse:min-h-10"
                               aria-label={`${rowTitle(row)} on ${host}`}
                               onClick={() =>
                                 setPicked({
@@ -409,7 +409,7 @@ export function RunHostsPanel({
                           {result ? (
                             <button
                               type="button"
-                              className="rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              className="min-h-6 rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring pointer-coarse:min-h-10"
                               aria-label={`${rowTitle(task)} on ${host}`}
                               onClick={() =>
                                 setPicked({ title: rowTitle(task), host, results: [{ label: null, result }] })

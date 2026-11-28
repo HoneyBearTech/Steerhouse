@@ -73,8 +73,8 @@ export function HostList({
       </div>
       <div className="flex flex-col divide-y divide-border rounded-md border border-border">
         {result?.hosts.map((host) => (
-          <details key={host.name} className="group px-3 py-2">
-            <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2 text-sm">
+          <details key={host.name} className="group px-3 py-2 compact:py-1">
+            <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2 text-sm compact:min-h-6 compact:gap-y-1 compact:pointer-coarse:min-h-10">
               <span className="font-mono wrap-anywhere">{host.name}</span>
               <OriginBadge origin={host.origin} />
               {host.groups.map((name) => (
@@ -94,7 +94,7 @@ export function HostList({
           </details>
         ))}
         {result && result.hosts.length === 0 && (
-          <p className="px-3 py-2 text-sm text-muted-foreground">No hosts match.</p>
+          <p className="px-3 py-2 text-sm text-muted-foreground compact:py-1">No hosts match.</p>
         )}
       </div>
       {result && result.total > PAGE_SIZE && (

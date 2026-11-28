@@ -259,15 +259,15 @@ export function InventoryDetailPage() {
       </Card>
 
       <Card>
-        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 compact:py-3">
           <CardTitle>Hosts</CardTitle>
           {canWrite && <HostDialog inventoryId={inventoryId} groups={inventory.groups} onSaved={refresh} />}
         </CardHeader>
-        <CardContent className="flex flex-col gap-3">
+        <CardContent className="flex flex-col gap-3 compact:gap-1.5 compact:pb-3">
           {inventory.hosts.length === 0 && <p className="text-sm text-muted-foreground">No hosts yet.</p>}
           {inventory.hosts.map((host) => (
             <div key={host.id} className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex min-w-0 flex-col gap-1">
+              <div className="flex min-w-0 flex-col gap-1 compact:gap-0.5">
                 <span className="text-sm font-medium wrap-anywhere">{host.hostname}</span>
                 <div className="flex flex-wrap gap-1">
                   {host.group_ids.map((groupId) => (

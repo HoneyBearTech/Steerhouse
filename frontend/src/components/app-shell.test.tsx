@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { FakeWebSocket } from "@/test/fake-websocket";
 import { inventory, playbook, run, viewerUser } from "@/test/fixtures";
+import { PAGE_ROUTES } from "@/test/pages";
 import { renderApp } from "@/test/render";
 
 const ROUTES = { "GET /users": [], "GET /runs": [run()], "GET /playbooks": [playbook()], "GET /inventories": [inventory()], "GET /run-templates": [], "GET /credentials": [] };
@@ -103,6 +104,32 @@ describe("header", () => {
     expect(localStorage.getItem("steerhouse-theme")).toBe("light");
   });
 
+  it("switches the density from the user menu and remembers it", async () => {
+    const { user, screen } = renderApp("/runs", { routes: ROUTES });
+    await user.click(await screen.findByRole("button", { name: "admin" }));
+    const density = within(screen.getByRole("group", { name: "Density" }));
+    expect(density.getByRole("menuitemradio", { name: "Comfortable" })).toHaveAttribute("aria-checked", "true");
+    await user.click(density.getByRole("menuitemradio", { name: "Compact" }));
+    expect(document.documentElement.dataset["density"]).toBe("compact");
+    expect(localStorage.getItem("steerhouse-density")).toBe("compact");
+    // The menu stays open, as for the theme.
+    expect(density.getByRole("menuitemradio", { name: "Compact" })).toHaveAttribute("aria-checked", "true");
+    await user.click(density.getByRole("menuitemradio", { name: "Comfortable" }));
+    expect(document.documentElement.dataset["density"]).toBe("comfortable");
+    expect(localStorage.getItem("steerhouse-density")).toBe("comfortable");
+  });
+
+  it("switches the density from the small-screen menu", async () => {
+    const { user, screen } = renderApp("/runs", { routes: ROUTES });
+    await user.click(await screen.findByRole("button", { name: "Open menu" }));
+    const density = within(screen.getByRole("group", { name: "Density" }));
+    expect(density.getByRole("button", { name: "Comfortable" })).toHaveAttribute("aria-pressed", "true");
+    await user.click(density.getByRole("button", { name: "Compact" }));
+    expect(density.getByRole("button", { name: "Compact" })).toHaveAttribute("aria-pressed", "true");
+    expect(document.documentElement.dataset["density"]).toBe("compact");
+    expect(localStorage.getItem("steerhouse-density")).toBe("compact");
+  });
+
   it("switches between the menu button and the full nav at 1280 px", async () => {
     // jsdom has no layout, so this pins the breakpoint classes: below xl the full nav no longer fits.
     const { screen } = renderApp("/runs", { routes: ROUTES });
@@ -136,5 +163,22 @@ describe("run output", () => {
     const recap = screen.getByText("PLAY RECAP ****").parentElement!;
     expect(recap).toHaveClass("whitespace-pre-wrap");
     expect(recap.textContent).toContain("****\nweb1");
+  });
+});
+
+describe("page width", () => {
+  // jsdom has no layout, so this pins the classes that apply from 1536 px (2xl).
+  it("widens list pages and the header on wide screens, and keeps forms at the normal width", async () => {
+    const { user, screen } = renderApp("/runs", { routes: PAGE_ROUTES });
+    await screen.findByRole("heading", { level: 1, name: "Runs" });
+    const header = screen.getByRole("banner").firstElementChild;
+    expect(screen.getByRole("main")).toHaveClass("max-w-6xl", "2xl:max-w-[90rem]");
+    expect(header).toHaveClass("max-w-6xl", "2xl:max-w-[90rem]");
+
+    await user.click(screen.getByRole("link", { name: "New run" }));
+    await screen.findByRole("heading", { level: 1, name: "New run" });
+    expect(screen.getByRole("main")).toHaveClass("max-w-6xl");
+    expect(screen.getByRole("main")).not.toHaveClass("2xl:max-w-[90rem]");
+    expect(header).toHaveClass("2xl:max-w-[90rem]");
   });
 });

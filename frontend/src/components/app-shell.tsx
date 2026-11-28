@@ -16,6 +16,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/context/auth-context";
+import { DENSITIES, setDensity, useDensity, type Density } from "@/lib/density";
+import { isWideRoute } from "@/lib/layout";
 import { setTheme, THEMES, useTheme, type Theme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
@@ -130,6 +132,7 @@ function UserMenu() {
   const { user, logout, activeProject } = useAuth();
   const navigate = useNavigate();
   const { theme } = useTheme();
+  const density = useDensity();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -146,6 +149,19 @@ function UserMenu() {
         <DropdownMenuLabel>Theme</DropdownMenuLabel>
         <DropdownMenuRadioGroup value={theme} onValueChange={(value) => setTheme(value as Theme)}>
           {THEMES.map((option) => (
+            <DropdownMenuRadioItem key={option.value} value={option.value} onSelect={(event) => event.preventDefault()}>
+              {option.label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel>Density</DropdownMenuLabel>
+        <DropdownMenuRadioGroup
+          aria-label="Density"
+          value={density}
+          onValueChange={(value) => setDensity(value as Density)}
+        >
+          {DENSITIES.map((option) => (
             <DropdownMenuRadioItem key={option.value} value={option.value} onSelect={(event) => event.preventDefault()}>
               {option.label}
             </DropdownMenuRadioItem>
@@ -180,7 +196,28 @@ function ThemeButtons() {
   );
 }
 
-/** The menu below wide-desktop width (1280 px): every link, the project, the account, the theme and logging out. */
+/** The density as a row of buttons, for the phone/tablet menu. */
+function DensityButtons() {
+  const density = useDensity();
+  return (
+    <fieldset className="flex flex-wrap items-center gap-2">
+      <legend className="float-left text-sm text-muted-foreground">Density</legend>
+      {DENSITIES.map((option) => (
+        <Button
+          key={option.value}
+          variant={density === option.value ? "secondary" : "ghost"}
+          size="sm"
+          aria-pressed={density === option.value}
+          onClick={() => setDensity(option.value)}
+        >
+          {option.label}
+        </Button>
+      ))}
+    </fieldset>
+  );
+}
+
+/** The menu below wide-desktop width (1280 px): every link, the project, the account, the theme, the density and logging out. */
 function MobileMenu({ main, admin, onClose }: { main: NavEntry[]; admin: NavEntry[]; onClose: () => void }) {
   const { user, logout, activeProject } = useAuth();
   return (
@@ -221,6 +258,7 @@ function MobileMenu({ main, admin, onClose }: { main: NavEntry[]; admin: NavEntr
         </Button>
       </div>
       <ThemeButtons />
+      <DensityButtons />
     </nav>
   );
 }
@@ -228,6 +266,8 @@ function MobileMenu({ main, admin, onClose }: { main: NavEntry[]; admin: NavEntr
 export function AppShell() {
   const { user, activeProjectId } = useAuth();
   const { main, admin } = useNavEntries();
+  // From the address, not the lazily loaded page, so nothing jumps once the page arrives.
+  const wide = isWideRoute(useLocation().pathname);
   const [menuOpen, setMenuOpen] = React.useState(false);
   const isAdmin = user?.role === "admin";
   const hasNoProject = !!user && !isAdmin && user.projects.length === 0;
@@ -235,7 +275,8 @@ export function AppShell() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border">
-        <div className="mx-auto max-w-6xl px-4 sm:px-8">
+        {/* Always the wide width on wide screens, so the menu stays put between pages. */}
+        <div className="mx-auto max-w-6xl px-4 sm:px-8 2xl:max-w-[90rem]">
           <div className="flex h-14 items-center gap-6">
             <Link
               to="/"
@@ -273,7 +314,7 @@ export function AppShell() {
           {menuOpen && <MobileMenu main={main} admin={admin} onClose={() => setMenuOpen(false)} />}
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-4 py-6 sm:p-8">
+      <main className={cn("mx-auto max-w-6xl px-4 py-6 sm:p-8", wide && "2xl:max-w-[90rem]")}>
         {hasNoProject ? (
           <div className="flex flex-col gap-2">
             <h1 className="text-xl font-semibold">No project yet</h1>

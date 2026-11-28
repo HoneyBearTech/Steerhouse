@@ -57,7 +57,7 @@ function RunSection({
       ) : runs.length === 0 ? (
         <p className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">{empty}</p>
       ) : (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2 compact:gap-1">
           {runs.map((run) => (
             <RunRow key={run.id} run={run} />
           ))}

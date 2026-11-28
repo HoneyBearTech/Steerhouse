@@ -118,12 +118,12 @@ export function AuditPage() {
       {loading && <p className="text-sm text-muted-foreground">Loading…</p>}
       {!loading && items.length === 0 && <p className="text-sm text-muted-foreground">No matching events.</p>}
 
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2 compact:gap-1">
         {items.map((event) => {
           const target = describeTarget(event);
           return (
             <Card key={event.id}>
-              <CardContent className="flex flex-col gap-1 p-4">
+              <CardContent className="flex flex-col gap-1 p-4 compact:gap-0.5 compact:py-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <Badge variant={OUTCOME_VARIANT[event.outcome]}>{event.outcome}</Badge>

@@ -31,4 +31,5 @@ afterEach(() => {
   vi.restoreAllMocks();
   localStorage.clear();
   delete document.documentElement.dataset["theme"];
+  delete document.documentElement.dataset["density"];
 });

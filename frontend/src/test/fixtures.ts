@@ -1,5 +1,6 @@
 import type {
   AdminUser,
+  AuditEvent,
   EgressSettings,
   Credential,
   GitSource,
@@ -536,6 +537,23 @@ export function egressSettings(overrides: Partial<EgressSettings> = {}): EgressS
     total: 3,
     summary: { hosts: 3, ok: 1, indirect: 1, local: 0, unknown: 1 },
     warnings: [],
+    ...overrides,
+  };
+}
+
+export function auditEvent(overrides: Partial<AuditEvent> = {}): AuditEvent {
+  return {
+    id: 1,
+    created_at: "2026-10-05T12:00:00Z",
+    actor_username: "admin",
+    project_id: 1,
+    action: "credential.create",
+    target_type: "credential",
+    target_id: 3,
+    target_name: "deploy-key",
+    outcome: "success",
+    ip: "203.0.113.5",
+    detail: { kind: "ssh" },
     ...overrides,
   };
 }

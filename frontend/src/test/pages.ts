@@ -5,6 +5,7 @@ import type { User } from "@/lib/api";
 import { reply, type Routes } from "./api-routes";
 import {
   adminUser,
+  auditEvent,
   CATALOG,
   credential,
   egressSettings,
@@ -105,7 +106,33 @@ export const PAGE_ROUTES: Routes = {
   "GET /projects": [{ id: 1, name: "Default", description: null, created_at: "2026-10-05T12:00:00Z", my_role: "admin" }],
   "GET /projects/:id/git-sources": [gitSource()],
   "GET /users": [],
-  "GET /audit": { items: [], total: 0 },
+  "GET /audit": {
+    items: [
+      auditEvent(),
+      auditEvent({
+        id: 2,
+        action: "auth.login",
+        actor_username: "a-very-long-username-for-layout",
+        outcome: "failure",
+        project_id: null,
+        target_type: null,
+        target_id: null,
+        target_name: null,
+        detail: null,
+      }),
+      auditEvent({
+        id: 3,
+        action: "inventory.egress.update",
+        outcome: "denied",
+        target_type: "inventory",
+        target_id: 1,
+        target_name: "a-very-long-inventory-name-for-wrapping-checks",
+        ip: "2001:db8:85a3:0:0:8a2e:370:7334",
+        detail: { url: "https://a-very-long-mirror-host-name-for-wrapping-checks.packages.example.com/simple/" },
+      }),
+    ],
+    total: 3,
+  },
   "GET /workers": [],
   "GET /secret-store/status": { enabled: false, label: "OpenBao", url: null, ok: null, reachable: null, sealed: null, version: null, token_ttl: null, error_kind: null, error: null, checked_at: null, last_ok_at: null },
   "GET /notifications/catalog": CATALOG,

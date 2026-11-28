@@ -46,7 +46,9 @@ A status check of each item below, with what is left and a suggested order, is i
 - More from the editor: completion of module names and options, and ansible-lint's fixes offered as edits.
 
 **Layout and visualisation**
-- Denser tables for large lists on wide screens (the inventory group graph shipped in v0.3.0).
+- Denser tables for large lists on wide screens: done, for the next release. List pages use more of a wide
+  screen (1,536px and up), and a Compact density choice fits more rows on screen. (The inventory group graph
+  shipped in v0.3.0.)
 
 **Security and operations**
 - Running the worker's firewall updates in a small helper of their own, so the worker can drop `NET_ADMIN`.
